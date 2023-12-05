@@ -2,13 +2,13 @@
 
 # Overview
 
-This repository houses data and computer code related to simulation modeling and other analyses related to understanding the effects of dissolved oxygen and water temperature on Atlantic sturgeon in the Delaware River. The research supports policy development by US EPA related to dissolved oxygen criteria in the Zones 3, 4 and upper 5 of the Delaware River.
+This repository includes code, raw data, and outputs resulting from running the code, that were used by EPA to develop the proposed rule *Water Quality Standards to Protect Aquatic Life in the Delaware River* (December 2023).  The code implements models and other analyses to quantify the effects of dissolved oxygen, salinity, and water temperature on juvenile Atlantic sturgeon in zones 3, 4, and upper 5 of the Delaware River.
 
-The Atlantic sturgeon is sensitive to low dissolved oxygen and high water temperature, particularly in its larval and juvenile stages.  Several distinct population segments of Atlantic sturgeon were listed as endangered in 2012 under the Endangered Species Act.  The Delaware River has historically been severely impacted by pollution, especially from industrial and municipal wastewater discharges.  Reductions in pollutant loading since 1970 has resulted in stead improvements in water quality in the river.  In 2022, EPA determined that water quality improvements needed to restore propagation of Atlantic sturgeon in the Delaware River were attainable.
+The Atlantic sturgeon is sensitive to low dissolved oxygen and high water temperature, particularly in its larval and juvenile stages. Several distinct population segments of Atlantic sturgeon were listed as endangered in 2012 under the Endangered Species Act.  The Delaware River, which at one time supported an abundance population of Atlantic Sturgeon, has historically been severely impacted by pollution.  Reductions in pollutant loading since 1970 have resulted in steady water quality improvement in the river.  In 2022, EPA determined that further water quality improvements needed to restore propagation of Atlantic sturgeon in the Delaware River were attainable.
 
 This project implements existing bioenergetics and juvenile cohort models (Niklitschek and Secor 2005, Niklitschek and Secor 2009) to predict the effect on juvenile Atlantic sturgeon of oxygen and water temperature conditions that occur in the Delaware River or are expected to occur in the Delaware River after additional pollutant load reductions are implemented (Delaware River Basin Commission 2022). The analysis quantifies a habitat suitability index (HSI) based on the response of juvenile Atlantic Sturgeon to salinity, water temperature, and dissolved oxygen and uses it to derive threshold values for dissolved oxygen that are expected to support use of the designated zones of the river for propagation by Atlantic Sturgeon and other oxygen sensitive species.
 
-This repository includes code, raw data, and outputs resulting from running the code, that were used by EPA to develop the proposed rule *Water Quality Standards to Protect Aquatic Life in the Delaware River* (December 2023).
+
 
 ## Citation
 This work is not yet available for citation. It is expected that reports will be available in the near future as follows:
@@ -26,6 +26,7 @@ Niklitschek, E. J. and D. H. Secor (2009). "Dissolved oxygen, temperature and sa
 
 Delaware River Basin Commission (2022). Modeling Eutrophication Processes in the Delaware River Estuary - Three Dimensional Water Quality Model. West Trenton, NJ: 179. https://www.nj.gov/drbc/library/documents/AnalysisAttainability/HydroModelCalibrationRpt_DRAFTdec2021.pdf
 
+Environmental Protection Agency (2022). Letter from Radhika Fox, Assistant Administor of EPA, to Messrs. Tambini, Garvin, LaTourette, and Ziadeh conveying the EPA Administrator's Determination that revised water quality standards are required to protect aquatic life in zones 3, 4, and upper 5 of the Delaware River Estuary. O. o. W. US Envirionmental Protection Agency. Washington, DC: 12. https://www.epa.gov/system/files/documents/2022-12/Administrator-Determination-DRBC-December-2022.pdf
 
 
 ## EPA Disclaimer
