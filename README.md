@@ -14,7 +14,6 @@ This project implements existing bioenergetics and juvenile cohort models (Nikli
 This work is not yet available for citation. It is expected that reports will be available in the near future as follows:
 
 EPA 2023. Technical Support Document for the Proposed Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River.  US Environmental Protection Agency, Office of Water.  Washington, DC.  71 pp.
-Hagy, JD 2024.
 
 Hagy, J. D. III. 2024. Quantifying Dissolved Oxygen Thresholds for Growth and Survival of Juvenile Atlantic Sturgeon in the Tidal-Fresh Delaware River.  US Environmental Protection Agency, Office of Research and Development, Center for Environmental Measurement and Modeling, Atlantic Coastal Environmental Science Division, Narragansett, RI. [EPA REPORT NUMBER]. 62 pp.
 
