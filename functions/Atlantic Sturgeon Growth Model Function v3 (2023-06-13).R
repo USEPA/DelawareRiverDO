@@ -1,13 +1,16 @@
 
-#  	ATLANTIC STURGEON BIOENERGETIC MODEL
+# ATLANTIC STURGEON BIOENERGETIC MODEL
 #
-# This code was originally developed by E.J. Niklitschek, as reported by Niklitschek and Secor (2009).
-# The code was modified by J. Hagy (2023).  Model parameters were modified by initial values provided
-# by the author and as reported in the supplemental information associated with the referenced article.
+# This code was originally developed by E.J. Niklitschek, as reported by
+# Niklitschek and Secor (2009). The code was modified by J. Hagy (2023).  Model
+# parameters were modified from initial values provided by the author and as
+# reported in the supplemental information associated with the referenced
+# article.
 #
-# Niklitschek E.J. & Secor D.H. 2009. Dissolved oxygen, temperature and salinity effects on the ecophysiology and survival 
-# of juvenile Atlantic sturgeon in estuarine waters: II. Model development and testing. Journal of Experimental Marine Biology 
-# and Ecology 381: S161-S172.
+# Niklitschek E.J. & Secor D.H. 2009. Dissolved oxygen, temperature and salinity
+# effects on the ecophysiology and survival of juvenile Atlantic sturgeon in
+# estuarine waters: II. Model development and testing. Journal of Experimental
+# Marine Biology and Ecology 381: S161-S172.
 
 as_growth_model3 <- function(TEMP,SAL,DO,GR,output="Growth",parmSet=0) {
 
