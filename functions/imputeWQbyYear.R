@@ -1,13 +1,16 @@
 
 # Create a function to impute missing values for the data in one year
 # required the input time series to exist as "ts_input"
+library(tidyverse)
+library(lubridate)
 
 # Create a function to impute missing values for the data in one year.
 imputeByYear <- function(Year) {
   
-  tmp <- ts_input %>% 
-    filter(year==Year,between(yday(date),152,334)) %>% 
-    mutate(doy=yday(date))
+  tmp <- ts_input %>%
+    mutate(year=year(date),doy=yday(date)) %>% 
+    filter(year==Year) %>% 
+    filter(between(doy,152,334))
   
   # impute any missing values
   doy <- seq(152,334,by=1)

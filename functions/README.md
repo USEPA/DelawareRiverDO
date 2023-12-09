@@ -54,9 +54,38 @@ Niklitschek, E. J. and D. H. Secor (2005). "Modeling spatial and temporal variat
 
 ## imputeWQbyYear.R
 
-This script takes a daily time series of water quality and uses linear interpolation to impute salinity, dissolved oxygen, and water temeprature for any values that are missing.  
+This script takes a daily time series of water quality and uses linear interpolation to impute salinity, dissolved oxygen, and water temperature for any values that are missing during the period from June 1 to November 30 in a single year. The function requires that a data frame called ts_input be present in the Global Environment. The data frame ts_input must contain at a minimum the following variables:
+
+| Variable | Description |
+| :--- | :--- |
+| date | sampling date |
+| spCond.mean | Specific conductivity at 24 degrees (µS/cm) |
+| wt.mean | Water temperature (degrees C) | 
+| do.mgL.mean | Dissolved oxygen concentration (mg/L) |
+
+The function returns a data frame containing the following variables:
+
+| Variable | Description |
+| :--- | :--- |
+| doy | sampling day of year |
+| spCond.mean | Specific conductivity at 24 degrees (µS/cm) |
+| wt.mean | Water temperature (degrees C) | 
+| do.mgL.mean | Dissolved oxygen concentration (mg/L) |
+| year | sampling year |
+| salinity.mean | Salinty (unitless) |
+| posat.mean | Percent oxygen saturation (unitless) |
+
+The function uses the ec2pss function in the wql package to compute salinity from specific conductivity and the gas_O2sat function to compute percent oxygen saturation.  If salinity is less than 1, the function uses APHA method for computing oxygen solubility while the Weiss method is used for higher salinity.  For further information, see documentation for the gas_O2sat function.
+
+
+
+
+
 
 ### Usage
+
+imputeWQbyYear(year)
+
 
 
 
