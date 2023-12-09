@@ -129,7 +129,7 @@ This data file contains the data frame q.predictions.POSAT that contains posat p
 | type | Observed DO or Restored DO |
 
 ## 6.04 Predicted PP and DO percentiles.Rdata 
-This data file contains the data frame q.predictions.DO that contains posat percentiles, predicted median instantaneous potential production resulting from quantile generalized additive model (QGAM) fits to data from 2002-2022 (excluding 2010) for both observed DO and restored DO, and associated standard errors of the estimated medians. QGAM models were fitted to 10th percentiles and median only. The variables are defined as:
+This data file contains the data frame q.predictions.DO that contains dissolved oxygen concentration (mg/L) percentiles, predicted median instantaneous potential production resulting from quantile generalized additive model (QGAM) fits to data from 2002-2022 (excluding 2010) for both observed DO and restored DO, and associated standard errors of the estimated medians. QGAM models were fitted to 10th percentiles and median only. The variables are defined as:
 
 | Variable | Description |
 | :--- | :--- |
