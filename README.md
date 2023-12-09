@@ -12,16 +12,11 @@ This code was written by:
 
 James Hagy
 
-US Environmental Protection Agency
-
-Office of Research and Development
-
-Center for Environmental Measurement and Modeling
-
-Atlantic Coastal and Environmental Science Division
-
-Narragansett, RI
-
+US Environmental Protection Agency  
+Office of Research and Development  
+Center for Environmental Measurement and Modeling  
+Atlantic Coastal and Environmental Science Division  
+Narragansett, RI  
 hagy.jim@epa.gov
 
 ## Citation
