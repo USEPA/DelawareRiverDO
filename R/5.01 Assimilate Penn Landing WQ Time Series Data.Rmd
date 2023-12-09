@@ -1,0 +1,239 @@
+---
+title: "5.01 Assimilate Penn's Landing WQ Time Series Data"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#install.packages("wql")
+#install.packages('dataRetrieval')
+
+#https://rdrr.io/cran/wql/
+# Exploring Water Quality Monitoring Data - Jassby, Cloern, Stachelek
+
+library(tidyverse)
+library(lubridate)
+library(marelac)
+library(wql)
+library(wesanderson)
+library(viridis)
+
+large_text <- theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+no_grid <- theme(panel.grid=element_blank())
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+# Get function to impute missing values
+source("functions/imputeWQbyYear.R")
+
+dataPath <- "data/"
+figurePath <- "figures/"
+
+```
+
+## Download Penn's Landing WQ Data
+This code chunk creates the data frame drPenn_ctdo which has variables for daily mean conductivity (µS/cm), water temperature (°C), and dissolved oxygen (mg/L) for 1961-12-27 through 20213-1-30.  An Rdata file was saved when the code was originally created but is not overwritten to preserve data integrity.
+
+```{r read data, echo=TRUE}
+
+con <- file("raw/PennsLandingDV (retrieved 2023-03-09).txt")
+tmp <- readLines(con,n=52) %>% .[51] %>% strsplit(.,split="\t") %>% .[[1]]
+
+drPenn <- read.table(file="raw/PennsLandingDV (retrieved 2023-03-09).txt",
+                     col.names=tmp,skip=52,sep="\t")
+
+# The monitoring data at Penn's Landing includes data from two nearby but not
+# identical stations, which here are called the "original deployment" and the
+# "ISM Barge".  USGS recorded these data as different variables, so they are
+# precessed separately and then combined for the purposes of this study.
+
+## Data set 1 includes data from original deployment
+# Subset mean spCond,wt,DO(mg/L)
+drPenn_ctdo.1 <- drPenn[,c(1,2,3,8,14,20)]
+names(drPenn_ctdo.1) <- c("agency_cd","site_no","date","spCond.mean","wt.mean","do.mgL.mean")
+drPenn_ctdo.1 <- drPenn_ctdo.1 %>% mutate(date=as.Date(date))
+summary(drPenn_ctdo.1)
+
+## Data set 2 includes data from ISM barge 
+# Subset mean spCond,wt,DO(mg/L) from ISM Test Bed [ISM Barge]
+drPenn_ctdo.2 <- drPenn %>% .[,c(1,2,3,28,44,30)]
+names(drPenn_ctdo.2) <- c("agency_cd","site_no","date","spCond.mean","wt.mean","do.mgL.mean")
+drPenn_ctdo.2 <- drPenn_ctdo.2 %>% mutate(date=as.Date(date))
+summary(drPenn_ctdo.2)
+
+# Graph the two data sets to show that data set 1 goes to near the end of 2020
+# while data set 2 begins near the middle of 2020.
+rbind(
+  drPenn_ctdo.1 %>% 
+  pivot_longer(cols=all_of(c("spCond.mean","wt.mean","do.mgL.mean")),
+              names_to="param",values_to="value") %>%
+  filter(year(date)>2009) %>% 
+  mutate(loc="Original Deployment"),
+  drPenn_ctdo.2 %>% 
+  pivot_longer(cols=all_of(c("spCond.mean","wt.mean","do.mgL.mean")),
+              names_to="param",values_to="value") %>%
+  filter(year(date)>2009) %>% 
+  mutate(loc="ISM Barge")
+) %>% 
+ggplot(aes(x=date,y=value,color=loc))+
+    facet_wrap(~param,scales="free_y",ncol=1)+
+    geom_point(shape=1,alpha=0.5)+
+    no_grid
+
+# To combine the data, use data from data set 1 through the end of 2020
+# and use data from data set 2 for 2021 and later.
+drPenn_ctdo <- rbind(
+  drPenn_ctdo.1 %>% filter(year(date)<2021),
+  drPenn_ctdo.2 %>% filter(year(date)>=2021))
+
+# Check that the dataset is now a continuous time series
+drPenn_ctdo %>% 
+  pivot_longer(cols=all_of(c("spCond.mean","wt.mean","do.mgL.mean")),
+              names_to="param",values_to="value") %>%
+  filter(year(date)>2009) %>% 
+  ggplot(aes(x=date,y=value))+
+    facet_wrap(~param,scales="free_y",ncol=1)+
+    geom_point()+
+  no_grid
+
+# Save the data as an Rdata file
+#save(drPenn,drPenn_ctdo,file=paste0(dataPath,"5.01 Delaware River at Penn Landing.Rdata"))
+
+```
+
+## Review the Penn Landing Data 
+Ensure data were read correctly and are sufficient for the 
+intended analysis 
+
+```{r review data, echo=TRUE}
+# Load the Penn's Landing Time Series
+#load(paste0(dataPath,"5.01 Delaware River at Penn Landing.Rdata"))
+
+# Examine statistics to make sure data was read in correctly
+# Ranges shown here are appropriate
+summary(drPenn_ctdo)
+
+# Plot the Penn Landing data since 2002
+drPenn_ctdo %>% 
+  pivot_longer(cols=all_of(c("spCond.mean","wt.mean","do.mgL.mean")),names_to="param",values_to="value") %>% 
+  filter(year(date)>2001) %>% 
+  ggplot(aes(x=date,y=value))+
+    facet_wrap(~param,scales="free_y",ncol=1)+
+    geom_point()+
+    scale_x_date(date_breaks="2 years",date_labels="%Y")+
+    theme(panel.grid=element_blank())
+
+# Calculate salinity using wql::ec2pss.  This functions required
+# specific conductivity as mS/cm, but USGS provides spCond as 
+# µS/cm.  Therefore, divide by 1000 before calculating salinity 
+tmp <- drPenn_ctdo %>% 
+  mutate(year=year(date)) %>% 
+  select(date,year,wt.mean,do.mgL.mean,spCond.mean) %>% 
+  filter(complete.cases(.)) %>% 
+
+  # Calculate percent oxygen saturation.
+  # If salinity is less than 1, use APHA method that does not use salinity. APHA
+  # method is the standard for fresh water application.
+  # If salinity is >=1, then use "Weiss" method, which considers salinity, and is 
+  # the standard formula in marine sciences (Soetert and Petzoldt 2020).
+
+  # Soetaert K, Petzoldt T (2020). _marelac: Tools for Aquatic Sciences_. R package
+  # version 2.1.10, <https://CRAN.R-project.org/package=marelac>.
+  mutate(salinity.mean=ec2pss(ec=spCond.mean/1000,t=wt.mean),
+      posat.mean=ifelse(salinity.mean<1,
+      do.mgL.mean*100/gas_O2sat(t=wt.mean,method="APHA"),
+      do.mgL.mean*100/gas_O2sat(S=salinity.mean,t=wt.mean,method="Weiss")
+      ))
+# Show that salinity and percent DO saturation are calculated correctly
+tmp %>% 
+  pivot_longer(cols=all_of(c("salinity.mean","wt.mean","posat.mean")),
+               names_to="param",values_to="value") %>% 
+  filter(year(date)>2008) %>% 
+  ggplot(aes(x=date,y=value))+
+    facet_wrap(~param,scales="free_y",ncol=1)+
+    geom_point()+
+  theme(panel.grid=element_blank())
+
+# Count observations by year/month.
+# A lot of the data from December-February are absent.  
+# This is not a concern since modeling is July 1-November 1.
+# From 2019 onward, the data is year-round
+drPenn_ctdo %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(month=month(date),year=year(date)) %>% 
+  group_by(year,month) %>% 
+  summarize(n=n()) %>% 
+  filter(year>2008) %>% 
+  ggplot(aes(x=month,y=n))+
+  facet_wrap(~year,ncol=2)+
+  geom_col()+
+  scale_x_continuous(breaks=seq(1,12))
+```
+
+## Plot POSAT for 20 years at Penn's Landing
+Create a facet plot showing each year of DO data from 2002 to 2022. This figure appears in the Technical Report
+
+```{r Plot for Tech Report, echo=TRUE}
+
+## Plot DO with water temperature
+# Plot 20 years of DO at Penn Landing.
+# recast the dates as a date in 2002 so that same scale can be 
+# used in all the facets.  Dotted lines show Jul 1-Oct 31.
+plt <- tmp %>% filter(between(year(date),2002,2022)) %>% 
+  mutate(dy=as.Date(yday(date),origin="2001-12-31")) %>% 
+  ggplot(aes(x=dy,y=posat.mean,color=wt.mean))+
+  geom_point()+
+  facet_wrap(~year(date),ncol=4)+
+  scale_color_continuous(type="viridis",breaks=seq(5,25,by=5))+
+  scale_x_date(limits=c(as.Date("2002-07-01"),as.Date("2002-10-31")),
+               breaks=as.Date(c("2002-07-01","2002-08-01","2002-09-01","2002-10-01")),
+               date_labels="%m/%d")+
+  labs(x="",y="Percent Oxygen Saturation")+
+  no_grid+
+  theme(legend.position=c(0.6,0.05),legend.direction="horizontal")+
+  guides(color=guide_colorbar(title="Water Temperature"))
+plt
+
+# This creates figure A1-2 in the TSD.
+pdf(file=paste0(figurePath,"5.01 Penn Landing POSAT 2002-2022.pdf"),width=6,height=8,useDingbats = FALSE,paper="letter")
+  plt
+dev.off()
+
+```
+
+## Generate Summer Complete Data
+This code chunk uses linear interpolation to impute values for any missing data between July 1 and November 30.
+
+```{r Impute Missing Data, echo=TRUE}
+
+# Make a summer time series for each year from 2002 to 2022 excluding 2010 which
+# we believe has too much missing data to define the time series adequately to
+# run #simulations.
+Year <- c(seq(2002,2009,by=1),seq(2011,2022,by=1))
+# Define data to be imputed
+ts_input <- drPenn_ctdo %>% mutate(year=year(date))
+# Impute the data
+drpl_summer <- do.call(rbind,lapply(Year,imputeByYear))
+drpl_summer <- filter(drpl_summer,!is.na(year))
+
+# Make a plot to check data
+drpl_summer %>% 
+  pivot_longer(cols=all_of(c("salinity.mean","wt.mean","posat.mean")),
+               names_to="param",values_to="value") %>% 
+  ggplot(aes(x=doy,y=value))+
+    facet_grid(param~year,scales="free_y")+
+    geom_point()+
+  theme(panel.grid=element_blank())+
+  scale_x_continuous(breaks=seq(150,300,by=100))
+
+# Don't overwrite file as saved.
+#save(drpl_summer,file=paste0(dataPath,"5.01 DR_Penn_Landing_Summer_Complete #2002-2022.Rdata"))
+
+```
+

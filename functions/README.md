@@ -34,6 +34,7 @@ Niklitschek, E. J. and D. H. Secor (2009). "Dissolved oxygen, temperature and sa
 This R-script loads the data file "2.2 fit.mortality.v2.Rdata" be loaded, creating a model object called fit.mortality, and creates a function that uses the model object and returns an estimate of daily instantanous mortality caused by low oxygen as function of percent oxygen saturation and water temperature.
 
 ### Usage
+
 get.m.hypoxia(POSAT=NULL, wt=NULL)
 
 ### Arguments
@@ -56,4 +57,6 @@ Niklitschek, E. J. and D. H. Secor (2005). "Modeling spatial and temporal variat
 This script takes a daily time series of water quality and uses linear interpolation to impute salinity, dissolved oxygen, and water temeprature for any values that are missing.  
 
 ### Usage
+
+
 

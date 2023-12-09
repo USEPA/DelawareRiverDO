@@ -1,0 +1,155 @@
+---
+title: "6.01 Simulate Cohorts Using Restored DO.Rmd"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(marelac)
+library(wesanderson)
+library(viridis)
+
+# Load functions implementing bioenergetics model
+source("functions/Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R")
+source("functions/get_mortality.R")
+
+large_text <- theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14),
+        strip.text=element_text(size=14))
+no_grid <- theme(panel.grid=element_blank())
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+```
+
+# Overview
+Program 6.0 modeled the relationship between simulated DO from DRBC's HADO scenario and observed DO to predict restored DO for every year from 2002-2022. In this program, we simulate the daily instantaneous potential growth rate and daily instantaneous minimum mortality rate using the restored DO estimates.  We then calculate Habitat Suitability Index (HSI), which is defined as the July 1 to October 31 average of potential growth rate minus  minimum mortality rates.
+
+## Load Restored DO estimates
+```{r Load Restored DO, echo=TRUE}
+
+load(paste0(dataPath,"6.0 Estimates of Restored DO.Rdata"))
+
+```
+
+## Simulate HSI using Restored DO
+
+```{r Simulate HSI}
+
+#Make a function to implement the simulation 
+sim <- function(mySite) {
+
+df <- restoredWQ %>%
+  select(Site,year,doy,posat.mean,sal.mean,wt.mean) %>% 
+  filter(between(doy,182,304)) %>% 
+  filter(Site==mySite)
+
+posat <- df %>%
+  select(year,doy,posat.mean) %>% 
+  pivot_wider(names_from=doy,names_prefix="day",values_from = posat.mean) %>% 
+  select(-year) %>% 
+  as.matrix()
+
+salinity <- df %>%
+  select(year,doy,sal.mean) %>% 
+  pivot_wider(names_from=doy,names_prefix="day",values_from = sal.mean) %>% 
+  select(-year) %>% 
+  as.matrix()
+
+wt <- df %>%
+  select(year,doy,wt.mean) %>% 
+  pivot_wider(names_from=doy,names_prefix="day",values_from = wt.mean) %>% 
+  select(-year) %>% 
+  as.matrix()
+
+numberOfYears <- nrow(posat)
+
+# Simulate cohort
+initial.weight <- 27
+weight <- array(0,dim=c(numberOfYears,124))
+abundance <- array(0,dim=c(numberOfYears,124))
+growth <- array(0,dim=c(numberOfYears,124))
+mortality <- array(0,dim=c(numberOfYears,124))
+weight[,1] <- initial.weight
+abundance[,1] <- 10000
+
+for (t in 1:123) {
+  G <- as_growth_model3(TEMP=wt[,t],DO=posat[,t],SAL=salinity[,t],GR=weight[,t])
+  m.size <- 0  # set natural mortality to zero.
+  Z.do <- get.m.hypoxia(POSAT=posat[,t],WT=wt[,t])
+  weight[,t+1] <- weight[,t]*exp(G)
+  abundance[,t+1] <- abundance[,t]*exp(-m.size-Z.do)
+  growth[,t] <- G
+  mortality[,t] <- Z.do
+  # if weight falls below initial weight, then reset to initial weight
+  weight[weight[,t+1]<initial.weight,t+1] <- initial.weight  
+}
+
+transformArray <- function(inArray,vname) {
+  doy <- seq(182,305)
+  rownames(inArray) <- paste0("Y",unique(df$year))
+  sim <- t(inArray) %>% 
+    as.data.frame() %>% 
+    cbind(doy,.) %>% 
+    pivot_longer(cols = starts_with("Y"),names_prefix = "Y",names_to="year",values_to = vname) 
+  sim <- sim[order(sim$year,sim$doy),]
+}
+
+sim.wt <- transformArray(weight,"weight")
+sim.abund <- transformArray(abundance,"abundance")
+sim.G <- transformArray(growth,"growth")
+sim.Z <- transformArray(mortality,"mortality")
+
+sim.combined <- cbind(sim.abund,weight=sim.wt$weight,growth=sim.G$growth,mortality=sim.Z$mortality) %>% 
+    mutate(year=as.numeric(year),
+           date=as.Date(doy,origin=as.Date(paste0(year-1,"-12-31"))))
+
+summary <- sim.combined  %>% 
+  mutate(phi=growth-mortality) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(between(doy,182,305)) %>% 
+  group_by(year) %>% 
+  summarize(mean.phi=mean(phi),mean.growth=mean(growth),mean.Zmin=mean(mortality)) %>% 
+  mutate(Site=mySite)
+
+return(summary)
+}
+
+# Run the simulations for all the zones and locations, and bind them together in a data frame.
+results <- rbind(
+  sim("Penn's Landing"),
+  sim("Chester")
+  )
+
+restoredHSI <- results
+rm(results)
+save(restoredWQ,restoredHSI,
+     file=paste0(dataPath,"6.01 Simulated HSI using Restored DO.Rdata"))
+```
+
+# Plot HSI Results
+
+```{r Plot HSI Results}
+
+# Plot histograms of the restored DO values.  Note that values below 70% are generally absent at Chester, with most values between 75% and 90%.
+restoredWQ %>% 
+  ggplot(aes(x=posat.mean))+
+  geom_histogram()+
+  facet_grid(~Site)
+
+# Don't include 2010 data because there is too much missing data
+restoredHSI <- filter(restoredHSI,year != 2010)
+
+ggplot(restoredHSI,aes(x=year,y=mean.phi,fill=Site))+
+  geom_col(position="dodge")+
+  geom_hline(yintercept=0)+
+  no_grid+
+  ggtitle("Calculated Habitat Suitability Index using Restored DO") 
+
+```

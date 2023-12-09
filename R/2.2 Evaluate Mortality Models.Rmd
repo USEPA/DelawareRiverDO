@@ -1,0 +1,248 @@
+---
+title: "2.2 Evaluate Mortality Models"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(marelac)
+library(viridis)
+library(wesanderson)
+library(knitr)
+
+basic_theme <- theme_classic()+
+  theme(axis.title = element_text(size=14),
+        axis.text = element_text(size=14))
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+# TSD refers to "Technical Support Document" which was produced to support the proposed
+# rule for dissolved oxygen criteria in zones 3, 4 and upper 5 of the Delaware River. 
+
+figurePath <- "figures/"
+
+```
+
+# Overview
+
+This program illustrates why the survival model included in Niklitschek and Secor (2005) is a poor fit to the data and develops alternative.  The alternative survival model, which is a log-linear regression model is saved as a model object (data/fit.mortality.v2.Rdata). The extension .v2. references the fact that a previous version of the model had been used earlier in model development.  That model used less of the data from Campbell and Goodman 2005 which was later included. 
+
+
+## Plot predictions of Survival model used by Niklitschek and Secor (2005) 
+   Niklitschek and Secor (2005) model survival as part of the their calculation of potential production.  They develop a survival model using survival data reported by Niklitschek and Secor (2009).  This model, which is shown in the appendix, is
+
+S(t|Sal,T,DO)=0.99^a^  (day^-1^)
+
+where a is calculated from a multiple regression on salinity, water temperature and percent oxygen saturation (denoted as POSAT or posat). Percent oxygen saturation is the ratio of the dissolved oxygen concentration in the water to the concentration that would be present at the observed water temperature and salinity if the oxygen concentration was in equilibrium with the atmosphere.
+
+```{r}
+
+# Create a grid of salinity, posat and water temperature values and
+# calculate survival (S) and instantaneous mortality rate following
+# the equations in section A.3 of Niklitschek and Secor (2005)
+df <- expand.grid(sal=9,t=seq(5,30,by=1),posat=seq(30,100,by=5)) %>% 
+  mutate(a=exp(0.4*(sal-10.3)+0.8*(t-18.9)-0.3*(posat-72.4)),
+         S=0.99^a,4,
+         Z=-log(S))
+
+# Plot daily survivorship vs. temperature and POSAT
+ggplot(df, aes(x=posat,y=t,z=S))+
+  geom_contour_filled()+
+  scale_color_viridis()+
+  guides(fill=guide_legend(title="Survivorship"))+
+  labs(x="Percent Oxygen Saturation",y="Water Temperature (°C)",
+       caption="Figure 1.  Survivorship assuming salinity=9 predicted by multiple regression reported by Niklitschek and Secor (2005)")+
+  theme_classic()+
+  theme(plot.caption=element_text(hjust=0,size=12,face="italic"))
+
+
+```
+
+Survivorship (Fig 1) seems to be under-estimated at higher water temperatures and higher oxygen levels, when the model predicts almost complete mortality.  A closer comparison of the regression model with experimental observations can be obtained using response lines for 20° and one at 28°, levels for which most of the laboratory mortality estimates were available.
+
+```{r}
+
+# instantaneous daily mortality rates from Niklitschek and Secor (2009).  Data are digitized from the upper panel of figure 7, which are reported to be for a salinity of 8. 
+mortality.NS <- data.frame(
+  rbind(
+c(100,20,0.00),  # minimal mortality is assumed to occur at 100% saturation to allow for log transformation 
+c(100,28,0.00),  # mortality is assumed to be slightly higher at stressful temperature 
+c(70,20,0.01),
+c(70,28,0.04),
+c(40,20,0.018),
+c(40,28,0.025),  #Do not include this estimate because confidence is less than for LC50.
+# this point pulls the line away from the LC50 value, which is more certain 
+c(30,20,0.04)
+)) 
+names(mortality.NS) <- c("posat","t","Z")
+
+knitr::kable(select(mortality.NS,posat,t,Z),caption="Table 1. instantaneous mortality rates from Figure 7, upper panel in Niklitschek and Secor (2009).  ")
+
+mortality.NS <- mortality.NS %>% 
+  mutate(source="Niklitschek and Secor (2009)",
+         sal=8,
+         S=exp(-Z)) %>% 
+  mutate(a=exp(0.4*(sal-10.3)+0.8*(t-18.9)-0.3*(posat-72.4)),
+         S.pred=round(0.99^a,8),
+         Z.pred=-log(S.pred)) %>% 
+  mutate(Z.pred=ifelse(S.pred==0,NA,Z.pred)) %>% 
+  mutate(t=factor(t,levels=c(20,28)))
+
+
+# Plot daily instantaneous mortality rate
+options(scipen=999)
+ggplot()+
+  geom_line(data=filter(df,t %in% c(20,28) & S>0),aes(x=posat,y=Z,color=factor(t)))+
+  geom_point(data=mortality.NS,aes(x=posat,y=Z+0.001,color=t),size=4)+
+  scale_y_log10(limits=c(0.001,1))+
+  annotation_logticks(sides="l")+
+  guides(color=guide_legend(title="Water Temperature (°C)"))+
+  labs(x="Percent Oxygen Saturation",y="instantaneous mortality rate (/d)",
+  caption="Figure 2. Instantaneous daily mortality rates reported by Niklitschek and\nSecor (2009) in their Figure 7 (upper panel) and rates predicted using equations\nfrom Niklitschek and Secor (2005), Appendix 1, A3")+
+  theme_classic()+
+  theme(plot.caption=element_text(hjust=0,size=12,face="italic"))
+
+```
+
+The regression model in Niklitschek and Secor (2005) predicts increased mortality at high water temperature, which makes sense, but it also predicts mortality even with DO at 100%, which does not make sense.  The model does not fit the data very well (Figure 2). It seems more likely that relationship involves an interaction between water temperature  the effect includes an interaction.
+
+Although the data from Nikilitschek and Secor (2009) are the most relevant data for characterizing mortality of juvenile Atlantic sturgeon due to low DO, it may be useful to also consider data from Campbell and Goodman (2004), who studied mortality of shortnose sturgeon due to low DO across a range of water temperatures.  Fish were exposed to low DO at a salinity of 2 or 4 ppt for 24 hours. 
+
+In these data, the concentration causing 50% mortality (i.e., LC50) in 24 hours was reported, rather than the instantaneous mortality rate caused by a concentration.  The mortality rate can be calculated as -ln(S), where S is survivorship, in this case 50%.  Therefore Z for all tests is 0.693.
+
+
+```{r}
+
+# Load results from Table 2 into a variable
+mortality.CG <- data.frame(
+ fish.age=c(77,100,104,134),
+ wt.l=c(24.6,28.4,21.8,26.0),
+ wt.u=c(25,29.2,22.4,26.4),
+ lc50=c(2.7,3.1,2.2,2.2),
+ lc50.l=c(2.3,NA,2.2,2.0),
+ lc50.u=c(3.1,NA,2.3,2.4)
+) %>% 
+  mutate(t=(wt.l+wt.u)/2,
+         lc50.posat=lc50*100/gas_O2sat(S=2,t=t),
+         Z=-log(1-0.5)
+         )
+
+knitr::kable(mortality.CG,caption="Data from Table 2 in Campbell and Goodman (2004).")
+             
+```
+
+To build a revised model, we combined the data from Niklitschek and Secor (2009) with data from Campbell and Goodman (2004).  We did not use the data for 48 hour and 72 hour exposures, as these repeated the same value as the 24-hour test, and reflected the fact that nearly all mortality occurred early in the test.  Additionally, we also used the extrapolated estimate of LC5, 4.3 mg/L, which is based on 1.38 times the LC50. Converted to percent oxygen saturation at t=28.8 and S=2, this value is 56.5% DO saturation.
+
+```{r}
+
+# Calculation of posat for 4.3 mg/L at S=2 and t=28.8
+(4.3)*100/gas_O2sat(S=2,t=28.8)
+
+# Combine the data from Niklitschek and Secor (2009) with data from Campbell and
+# Goodman (2004)
+df <- rbind(
+  mortality.CG %>% 
+    mutate(source="Campbell and Goodman (2004)") %>%
+    rename(posat=lc50.posat) %>% 
+    select(posat,t,Z,source),
+  mortality.NS %>% select(posat,t,Z,source),
+  data.frame(
+    posat=56.53493,
+    t=28.8,
+    Z=-log(0.95),  # 5% daily mortality expressed as an instantaneous rate
+    source="EPA (2003)")
+  ) %>% 
+  mutate(t=as.numeric(t))
+
+knitr::kable(df,caption="Table 2. Combined mortality estimates")
+
+```
+
+We fitted a regression model relating the natural log of the instantaneous mortality rates to percent DO saturation, water tempeature, and an interaction between them. To fit the regression to logs, a fixed constant of 0.001 was added to all the values, eliminating any zero values. This constant can be subtracted from the predicted mortality rates.
+  
+```{r echo=TRUE}
+
+# Fit a regression model
+fit.mortality <- lm(log(Z+0.001) ~ posat + t + posat*t,data=df)
+summary(fit.mortality)
+
+# save the linear model object for later use in predicting mortality based on
+# posat and water temperature. This is not saved after initial creation of the
+# model to ensure integrity of results.
+#save(fit.mortality,file="data/2.2 fit.mortality.v2.Rdata")
+
+# predict instantaneous mortality rate for an example value using the log-linear model
+predict(fit.mortality,data.frame(posat=68,t=28)) %>% exp()-0.001
+
+df.pred <- expand.grid(t=c(20,24,26,28),posat=seq(30,100,by=2)) 
+df.pred$log.Z <- predict(fit.mortality,df.pred)
+df.pred <- df.pred %>% mutate(Z=exp(log.Z))
+
+
+# Plot a graph of the model and data
+plt <- ggplot() +
+  geom_point(data=df,aes(x=posat,y=Z+0.001,color=t,shape=source),size=4)+
+  geom_line(data=df.pred,aes(x=posat,y=Z,color=t,group=factor(t)))+
+  scale_y_log10()+
+  scale_color_viridis(discrete=FALSE)+
+  scale_x_continuous(breaks=seq(30,100,by=10))+
+  labs(x="Percent DO Saturation",y="Instantaneous Mortality Rate (/d) + 0.001",
+       caption="Figure 3. Observed and predicted instantaneous mortality.")+
+  theme_classic()+
+  theme(plot.caption=element_text(hjust=0,size=12,face="italic"),
+        legend.direction = "horizontal",
+        legend.position="top")
+plt
+
+# This figure appears as Figure 3 in the TSD.
+pdf(file=paste0(figurePath,"2.2 Mortality rate vs POSAT and WT.pdf"),width=5,height=5, paper="letter")
+  plt
+dev.off()
+```
+
+# Analysis of uncertainty in estimates of mortality rate
+Errors are multiplicative ... 95% confidence intervals for the predictions increase with the mean and are log-normally distributed, resulting in larger error bars for upper confidence limits.
+
+```{r Mortality Confidence Intervals}
+
+dat <- expand.grid(t=c(20,25,30),posat=c(30,40,50,70,100))
+
+pred <- predict(fit.mortality,dat,interval="confidence",level=0.95) %>% as.data.frame()
+
+dat <- cbind(dat,pred) %>% 
+  mutate(
+    Zmin = exp(fit)-0.001,
+    Zmin_lcl = exp(lwr)-0.001,
+    Zmin_ucl = exp(upr)-0.001
+  ) %>% 
+  mutate(
+    t=factor(t,levels=c(30,25,20)),
+    posat=factor(posat)
+  )
+
+dat
+
+plt <- ggplot()+
+  geom_col(data=dat,aes(x=posat,y=Zmin,fill=t),position="dodge",alpha=0.5)+
+  geom_errorbar(data=dat,aes(x=posat,ymin=Zmin_lcl,ymax=Zmin_ucl,color=t),position="dodge")+
+  coord_cartesian(ylim=c(0,1.5))+
+  theme_classic()+
+  guides(color=guide_legend(title="Water Temperature (°C)"),
+         fill=guide_legend(title="Water Temperature (°C)"))+
+  theme(legend.position=c(0.8,0.8))+
+  labs(x="Percent Oxygen Saturation",y="Zmin (per day)")+
+  annotate("text",x=0.85,y=1.5,label="10.45", size=3.5)+
+  annotate("text",x=1.85,y=1.5,label="2.54", size=3.5)
+plt
+
+pdf(file=paste0(figurePath,"2.2 Confidence intervals for predicted Zmin.pdf"), width=6, height=4, paper="letter")
+  plt
+dev.off()
+
+```

@@ -1,0 +1,222 @@
+---
+title: "5.03 Simulate Cohort for 2002-2022 at Chester"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(wesanderson)
+library(viridis)
+
+# Load functions implementing bioenergetics model
+
+source("functions/Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R")
+source("functions/get_mortality.R")
+
+basic_theme <- theme_classic() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+large_text <- theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+nogrid <- theme(panel.grid=element_blank())
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+figurePath <- "figures/"
+rawPath <- "raw/"
+
+```
+
+# Cohort Simulation at Chester
+
+This code follows the cohort modeling concept of Niklitschek and Secor (2009) to simulate growth and survival of a juvenile cohort experiencing water quality as observed at Chester, PA
+
+```{r Simulate Cohort}
+
+# Load the summer water quality data for Chester
+load(paste0(dataPath,"5. DR_Chester_Summer_Complete.Rdata"))
+
+# Prepare water quality matrices for fish model for use in 
+# simulations
+posat.mean <- drc_summer %>%
+  select(year,doy,posat.mean) %>% 
+  pivot_wider(names_from=doy,names_prefix="day",values_from = posat.mean) %>% 
+  as.matrix()
+
+salinity.mean <- drc_summer %>%
+  select(year,doy,salinity.mean) %>% 
+  pivot_wider(names_from=doy,names_prefix="day",values_from = salinity.mean) %>% 
+  as.matrix()
+
+wt.mean <- drc_summer %>%
+  select(year,doy,wt.mean) %>% 
+  pivot_wider(names_from=doy,names_prefix="day",values_from = wt.mean) %>% 
+  as.matrix()
+
+numberOfYears <- nrow(posat.mean)
+
+# Subset the posat,sal,wt matrices to start on July 1 following 
+posat <- posat.mean[,32:ncol(posat.mean)]
+wt <- wt.mean[,32:ncol(wt.mean)]
+salinity <- salinity.mean[,32:ncol(salinity.mean)]
+
+# Simulate cohort
+initial.weight <- 27  # 27 grams
+weight <- array(0,dim=c(numberOfYears,154))
+abundance <- array(0,dim=c(numberOfYears,154))
+growth <- array(0,dim=c(numberOfYears,154))
+mortality <- array(0,dim=c(numberOfYears,154))
+weight[,1] <- initial.weight
+abundance[,1] <- 10000
+
+for (t in 1:153) {
+  G <- as_growth_model3(TEMP=wt[,t],DO=posat[,t],SAL=salinity[,t],GR=weight[,t])
+  m.size <- 0  # set natural mortality to zero.
+  Z.do <- get.m.hypoxia(POSAT=posat[,t],WT=wt[,t])
+  weight[,t+1] <- weight[,t]*exp(G)
+  abundance[,t+1] <- abundance[,t]*exp(-m.size-Z.do)
+  growth[,t] <- G
+  mortality[,t] <- Z.do
+  # if weight falls below initial weight, reset to initial weight. This prevents weight
+  # from falling below minimum size for growth model to return a value.
+  weight[weight[,t+1]<initial.weight,t+1] <- initial.weight
+}
+
+```
+
+## Combine results
+This code processes the simulation model results from the previous code chunk so that it can be graphed and used in later analysis.
+
+```{r Combine Simulation Results, echo=FALSE}
+
+transformArray <- function(inArray,vname) {
+  doy <- seq(182,335)
+  rownames(inArray) <- paste0("Y",seq(2002,2022))
+  sim <- t(inArray) %>% 
+    as.data.frame() %>% 
+    cbind(doy,.) %>% 
+    pivot_longer(cols = starts_with("Y"),names_prefix = "Y",names_to="year",values_to = vname) 
+  sim <- sim[order(sim$year,sim$doy),]
+}
+
+sim.wt <- transformArray(weight,"weight")
+sim.abund <- transformArray(abundance,"abundance")
+sim.G <- transformArray(growth,"growth")
+sim.Z <- transformArray(mortality,"mortality")
+
+sim.Chester.Zmin <- cbind(sim.abund,weight=sim.wt$weight,growth=sim.G$growth,mortality=sim.Z$mortality)
+
+# Save the cohort simulation data
+#save(sim.Chester.Zmin,
+#     file=paste0(dataPath,"5.03 Chester Cohort Simulation 2002-2022.Rdata"))
+
+```
+
+## Make a graph of fish size and compare with observed sizes
+
+```{r Compare Simulated and Observed Fish Size}
+
+#load(paste0(dataPath,"5.03 Chester Cohort Simulation 2002-2022.Rdata"))
+
+# Load data set from Ian Park with Sturgeon sizes
+load(paste0(dataPath,"size.on.date.Rdata"))
+
+# Graph fish weight
+size.on.date <- size.on.date %>% 
+  mutate(date.2019=as.Date(yday(date),origin=as.Date("2018-12-31")))
+
+# Create a variable indicating if year had fish captures in Ian
+# Park's data or not.
+df <- sim.Chester.Zmin %>% 
+  mutate(year.with.capture = ifelse(year %in% unique(size.on.date$year.capture),"With Capture","No Captures")) %>% mutate(year.with.capture=factor(year.with.capture,levels=c("With Capture","No Captures")))
+
+plt <- ggplot()+
+  geom_line(data=df,aes(x=as.Date(doy,origin=as.Date("2018-12-31")),y=weight,group=factor(year),linetype=year.with.capture,lineweight=0.25))+
+  geom_point(data=filter(size.on.date,yday(date)>150,obs.weight<500),aes(x=date.2019,y=obs.weight),size=1.5,shape=1)+
+  scale_x_date(date_breaks="1 months",date_labels="%b")+
+  scale_y_continuous(breaks=seq(0,250,50))+
+  labs(x="",y="Fish Weight (g)")+
+  basic_theme+
+  theme(legend.position="none")
+  #guides(color=guide_legend("Year"))
+plt
+
+# This creates Figure 6 in the TSD
+pdf(file=paste0(figurePath,"5.03 Predicted fish weight at Chester.pdf"),
+     width=4.5,height=4,paper="letter")
+  plt
+dev.off()
+
+```
+
+## Graph Growth Rate (Gmax) and Mortality Rate (Zmin)
+
+```{r Graph Growth and Mortality Rate}
+
+# Load previously saved data.
+#load(paste0(dataPath,"5.03 Chester Cohort Simulation 2002-2022.Rdata"))
+
+## Remove data from 2010 (too much missing data, per DRBC)
+sim.Chester.Zmin <- sim.Chester.Zmin %>% filter(year != "2010" )
+
+# Graph growth
+sim.Chester.Zmin %>% 
+  mutate(date=as.Date(doy,origin=as.Date("2018-12-31"))) %>%
+  select(date,year,growth,mortality) %>% 
+  pivot_longer(cols=all_of(c("growth","mortality")),names_to="param",values_to = "rate") %>% 
+  mutate(param=factor(param,levels=c("growth","mortality"),labels=c("Growth","Mortality"))) %>% 
+ggplot(aes(x=date,y=rate,color=year))+
+  facet_wrap(~param,scales="free_y",ncol=1)+
+  geom_line(linewidth=0.7)+
+  geom_hline(yintercept=0,linetype=2)+
+  guides(color=guide_legend(title="Year"))+
+  scale_x_date(date_breaks = "1 month",date_labels = "%m/%d")+
+  labs(x="",y="Instantaneous Rate (/d)")+
+  nogrid+large_text
+
+# graph Gmax minus Zmin (phi)
+sim.Chester.Zmin %>% 
+  mutate(date=as.Date(doy,origin=as.Date("2018-12-31")),
+         phi=growth-mortality) %>%
+ggplot(aes(x=date,y=phi))+
+  facet_wrap(~year,ncol=4)+
+  geom_line(linewidth=0.7)+
+  geom_hline(yintercept=0,linetype=2)+
+  guides(color=guide_legend(title="Year"))+
+  scale_x_date(date_breaks = "3 month",date_labels = "%m/%d")+
+  labs(x="",y="Production Potential (/d)")+
+  nogrid+
+  ggtitle("Production Potential at Chester, PA, 2002-2022")
+
+```
+
+## Graph Mean Production Potential for 2002-2022
+
+```{r}
+
+df <- sim.Chester.Zmin %>% 
+  mutate(phi=growth-mortality) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(between(doy,182,305)) %>% 
+  group_by(year) %>% 
+  summarize(mean.phi=mean(phi),mean.growth=mean(growth),mean.Zmin=mean(mortality))
+
+ggplot(df,aes(x=year,y=mean.phi))+
+  geom_col(fill=pal[1])+
+  geom_hline(yintercept=0,linetype=2)+
+  scale_y_continuous(limits=c(-0.04,0.01),breaks=seq(-0.04,0.01,by=0.01))+
+  scale_x_continuous(breaks=seq(2002,2022,by=2))+
+  basic_theme+
+  labs(y="Potential Production (/d)",x="")+
+  ggtitle("Production Potential at Chester, PA",
+          subtitle="July 1 - November 1")
+
+```
+
+

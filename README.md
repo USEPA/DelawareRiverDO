@@ -8,12 +8,21 @@ The Atlantic sturgeon is sensitive to low dissolved oxygen and high water temper
 
 This project implements existing bioenergetics and juvenile cohort models (Niklitschek and Secor 2005, Niklitschek and Secor 2009) to predict the effect on juvenile Atlantic sturgeon of oxygen and water temperature conditions that occur in the Delaware River or are expected to occur in the Delaware River after additional pollutant load reductions are implemented (Delaware River Basin Commission 2022). The analysis quantifies a habitat suitability index (HSI) based on the response of juvenile Atlantic Sturgeon to salinity, water temperature, and dissolved oxygen and uses it to derive threshold values for dissolved oxygen that are expected to support use of the designated zones of the river for propagation by Atlantic Sturgeon and other oxygen sensitive species.
 
-
+This code was written by:
+James Hagy
+US Environmental Protection Agency
+Office of Research and Development
+Center for Environmental Measurement and Modeling
+Atlantic Coastal and Environmental Science Division
+Narragansett, RI
+hagy.jim@epa.gov
 
 ## Citation
-This work is not yet available for citation. It is expected that reports will be available in the near future as follows:
+This code may be cited as supporing information for:
 
 EPA 2023. Technical Support Document for the Proposed Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River.  US Environmental Protection Agency, Office of Water.  Washington, DC.  71 pp.
+
+It is expected that an additional technical report will be available peer-review pending review: 
 
 Hagy, J. D. III. 2024. Quantifying Dissolved Oxygen Thresholds for Growth and Survival of Juvenile Atlantic Sturgeon in the Tidal-Fresh Delaware River.  US Environmental Protection Agency, Office of Research and Development, Center for Environmental Measurement and Modeling, Atlantic Coastal Environmental Science Division, Narragansett, RI. [EPA REPORT NUMBER]. 62 pp.
 

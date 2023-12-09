@@ -1,0 +1,183 @@
+---
+title: "7.01 Evaluate Seasonal Attainment"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(marelac)
+library(wql)
+library(wesanderson)
+library(viridis)
+library(quantreg)
+
+
+basic_theme <- theme_classic() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+nogrid <- theme(panel.grid=element_blank())
+largetext <- theme(axis.text=element_text(size=14),
+                   axis.title = element_text(size=14))
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+outputsPath <- "outputs/"
+
+```
+
+## Evaluate Seasonal Attainment
+These calculations are used in the economic analysis to determine whether additional wastewater treatment plant controls are needed to attain EPA’s proposed criteria in each of the three seasons. 
+
+## Load the data from Chester and Penn's Landing and Calculate daily stats
+
+```{r loadData}
+
+load(paste0(dataPath,"5. Chester_1961-2023.Rdata"))
+load(paste0(dataPath,"5.01 Delaware River at Penn Landing.Rdata"))
+
+df <- rbind(
+  drChester_ctdo %>% mutate(site="Chester"),
+  drPenn_ctdo %>% mutate(site="Penn's Landing")) %>% 
+  filter(date>as.Date("2011-11-01")) %>%
+  filter(date<as.Date("2022-10-31")) %>% 
+  select(date,site,wt.mean,do.mgL.mean,spCond.mean) %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(salinity.mean=ec2pss(ec=spCond.mean/1000,t=wt.mean),
+         posat.mean = do.mgL.mean*100/gas_O2sat(S=salinity.mean,t=wt.mean)) %>% 
+  select(-spCond.mean)
+
+df.long <- df %>% pivot_longer(cols=!all_of(c("site","date")),names_to = "param",values_to = "value")
+
+daily_stats <- df.long %>% 
+  mutate(doy=yday(date)) %>% 
+  group_by(site,param,doy) %>% 
+  summarize(mn=min(value),med=median(value),mx=max(value)) %>% 
+  ungroup() %>% 
+  filter(param != "salinity.mean") %>% 
+  mutate(season=cut(doy,breaks=c(0,60,182,304,366),
+             labels=c("Overwinter","Spawning","Growth","Overwinter"))) 
+
+# Calculate the seasonal temperatures used in proposed rule for Alternative 1 (criteria expressed as concentration).  Values included in rule are for Chester only.
+daily_stats %>% 
+  group_by(site,param,season) %>% 
+  summarize(p.10=quantile(med,probs=0.1),
+            mean=mean(med),
+            p.90=quantile(med,probs=0.9)) %>% 
+  mutate(crit.50=0.66*gas_O2sat(S=0,t=mean),
+         crit.90=0.66*gas_O2sat(S=0,t=p.90))
+```
+
+# Are the Spawning and Overwintering Criteria Currently Attained at Chester
+This information is used in the economic analysis for the rule.
+
+```{r MakeAssessment}
+
+tmp <- df.long %>% 
+  filter(param=="posat.mean") %>%
+  mutate(doy=yday(date)) %>% 
+  mutate(season=cut(doy,breaks=c(0,60,182,304,366),
+             labels=c("Overwinter","Spawning","Growth","Overwinter"))) %>% 
+  mutate(year=year(date)) %>% 
+  mutate(assess_year=ifelse(yday(date)>305,year+1,year)) %>% 
+  mutate(posat_lt_66=value<66,
+         posat_lt_74=value<74)
+
+tmp.1 <- tmp %>% 
+  group_by(site,season,assess_year) %>% 
+  summarize(n=n(),
+            p.10=quantile(value,probs=0.1),
+            p.50=quantile(value,probs=0.5))
+
+tmp.2 <-  tmp %>% 
+  filter(posat_lt_66) %>% 
+  group_by(site,season,assess_year) %>% 
+  summarize(days_lt_66=n())
+
+tmp.3 <-  tmp %>% 
+  filter(season=="Growth") %>% 
+  filter(posat_lt_74) %>% 
+  group_by(site,season,assess_year) %>% 
+  summarize(days_lt_74=n()) 
+
+assess <- tmp.1 %>%
+  select(assess_year,season,n,p.10,p.50) %>% 
+  left_join(.,tmp.2,by=c("site","season","assess_year")) %>% 
+  left_join(.,tmp.3,by=c("site","season","assess_year"))
+
+assess$days_lt_74[is.na(assess$days_lt_74) & assess$season=="Growth"] <- 0
+assess$days_lt_66[is.na(assess$days_lt_66)] <- 0
+
+assess <- assess %>% 
+  mutate(
+    attains.10=days_lt_66<=12,
+    attains.50=days_lt_74<=61,
+    attains=ifelse(season=="Growth",attains.10 & attains.50,attains.10)
+  )
+
+write.csv(assess,file=paste0(outputsPath,"7.01 Seasonal Criteria Assessment Analysis.csv"))
+
+```
+
+## Make seasonal graphs
+
+```{r PlotSeasonalGraphs}
+
+# add date, assuming year=2019 (but not showing it)
+daily_stats <- daily_stats %>% mutate(date=as.Date(doy,origin="2018-12-31"))
+ggplot()+
+  geom_line(data=daily_stats,aes(x=date,y=med),color=pal[1])+
+  geom_ribbon(data=daily_stats,aes(x=date,ymin=mn,ymax=mx),fill=pal[2],alpha=0.5)+
+  facet_wrap(~param,ncol=1,scales="free_y")+
+  scale_x_date(date_breaks = "1 month",date_labels = "%m/%d")+
+  labs(y="Median Value")+
+  nogrid
+
+ggplot()+
+  geom_line(data=daily_stats %>% filter(param=="do.mgL.mean"),aes(x=date,y=med),color=pal[1])+
+  geom_ribbon(data=daily_stats %>% filter(param=="do.mgL.mean"),aes(x=date,ymin=mn,ymax=mx),fill=pal[2],alpha=0.5)+
+  scale_x_date(date_breaks = "1 month",date_labels = "%m/%d")+
+  theme_classic()+
+  labs(x="",y="Dissolved Oxygen (mg/L)")+
+  scale_y_continuous(limits=c(0,14),breaks=seq(0,14,by=2))+
+  geom_hline(yintercept=c(4.3,5.0,6.0),linetype=2)+
+  geom_vline(xintercept=c(as.Date("2019-02-28"),as.Date("2019-06-30"),as.Date("2019-10-31")),linetype=3,color="grey")+
+  annotate("text",x=as.Date("2019-01-01"),y=4.6,label="4.3 mg/L")+
+  annotate("text",x=as.Date("2019-01-01"),y=5.3,label="5.0 mg/L")+
+  annotate("text",x=as.Date("2019-01-01"),y=6.3,label="6.0 mg/L")+
+  ggtitle("Average Seasonal DO Concentration in Delaware River",
+          subtitle="at Chester, PA, 2009-2022")
+  
+ggplot()+
+  geom_line(data=daily_stats %>% filter(param=="posat.mean"),aes(x=date,y=med),color=pal[1])+
+  geom_ribbon(data=daily_stats %>% filter(param=="posat.mean"),aes(x=date,ymin=mn,ymax=mx),fill=pal[2],alpha=0.5)+
+  scale_x_date(date_breaks = "1 month",date_labels = "%m/%d")+
+  theme_classic()+
+  labs(x="",y="Percent Oxygen Saturation")+
+  scale_y_continuous(limits=c(0,120),breaks=seq(0,120,by=20))+
+  geom_hline(yintercept=c(68,77),linetype=2)+
+  geom_vline(xintercept=c(as.Date("2019-02-28"),as.Date("2019-06-30"),as.Date("2019-10-31")),linetype=3,color="grey")+
+  annotate("text",x=as.Date("2019-01-01"),y=80,label="77%")+
+  annotate("text",x=as.Date("2019-01-01"),y=71,label="68%")+
+  ggtitle("Average Seasonal Percent Oxygen Saturation in Delaware River",
+          subtitle="at Chester, PA, 2009-2022")
+
+ggplot()+
+  geom_line(data=daily_stats %>% filter(param=="wt.mean"),aes(x=date,y=med),color=pal[1])+
+  geom_ribbon(data=daily_stats %>% filter(param=="wt.mean"),aes(x=date,ymin=mn,ymax=mx),fill=pal[2],alpha=0.5)+
+  scale_x_date(date_breaks = "1 month",date_labels = "%m/%d")+
+  theme_classic()+
+  labs(x="",y="Water Temperature (deg C)")+
+  scale_y_continuous(limits=c(0,32),breaks=seq(0,32,by=2))+
+  geom_vline(xintercept=c(as.Date("2019-02-28"),as.Date("2019-06-30"),as.Date("2019-10-31")),linetype=3,color="grey")+
+  geom_hline(yintercept=28,linetype=2)+
+  ggtitle("Average Seasonal Water Temperature in Delaware River",
+          subtitle="at Chester, PA, 2009-2022")
+  
+```
+

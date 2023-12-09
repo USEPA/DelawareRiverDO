@@ -1,0 +1,437 @@
+---
+title: "6.0 Predict Restored DO Time Series"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(EGRET)
+library(marelac)
+library(mgcv)
+library(wesanderson)
+library(viridis)
+library(gratia)
+library(modelr)
+
+pal <- wes_palette("Zissou1",5,"discrete")
+nogrid <- theme(panel.grid=element_blank())
+
+dataPath <- "data/"
+figurePath <- "figures/"
+rawPath <- "raw/"
+outputPath <- "outputs/"
+```
+
+## Overview
+This objective of this program is to replicate and potentially improve an analysis first developed by Jake Bransky (Delaware River Basin Commission) to predict DO levels that would be expected after pollution reductions in every year from 2002-2022 given simulations using the Environmental Fluid Dynamics Code and Water Analysis Simulation Program (EFDC/WASP) that only exist for 3 years. 
+
+This analysis requires data from EFDC/WASP simulations developed by the Delaware River Basin Commission.  The "Highest Attainable Dissolved Oxygen" or HADO scenarios simulate DO values that in this analysis we call "Restored DO."  Because the full EFDC/WASP model results create large files, this program begins with a subset of data extracted from those results.  These include vertically averaged model simulation results at cell 31_116, which is the approximate location of the Chester water monitoring station, and cell 31_155, which is the approximate location the Penn's Landing water quality monitoring station.  The simulation model results were for latest (most updated) simulations available at the time the data was obtained.  DRBC may have made additional changes to their model simulations.  Unless these changes result in dramatic changes in the seasonal or interannual distribution of water quality variables, we do not expect that it would affect the intended uses in this research.
+
+## Download Delaware River Discharge at Trenton
+This requires the EGRET R Package
+
+```{r, Get Discharge Data}
+
+siteNumber <- "01463500"
+startDate <- "2002-01-01"
+endDate <- "2022-12-31"
+#This call will get NWIS (ft3/s) data , and convert it to m3/s:
+discharge.daily <- readNWISDaily(siteNumber, "00060", startDate, endDate)
+
+```
+
+## Extract the simulated values at Chester and Penn's Landing
+
+```{r Extract Model Data}
+
+#This code is not used here because the full model results are not loaded into
+#the #GitHub repository.  Instead, the program proceeds with the saved result
+#which is a vastly smaller file.
+#
+# # Extract the time series for each location
+# df <- rbind(
+#   WASP.HADO.2012.kavg %>% filter(IJ=="31_116") %>% mutate(Site="Chester"),
+#   WASP.HADO.2012.kavg %>% filter(IJ=="31_155") %>% mutate(Site="Penn's Landing"),
+#   WASP.HADO.2018.kavg %>% filter(IJ=="31_116") %>% mutate(Site="Chester"),
+#   WASP.HADO.2018.kavg %>% filter(IJ=="31_155") %>% mutate(Site="Penn's Landing"),
+#   WASP.HADO.2019.kavg %>% filter(IJ=="31_116") %>% mutate(Site="Chester"),
+#   WASP.HADO.2019.kavg %>% filter(IJ=="31_155") %>% mutate(Site="Penn's Landing")
+# )
+# HADO_WQ <- df %>% select(date,IJ,DO,WT,SAL,Site)
+# save(HADO_WQ,file=paste0(dataPath,"HADO_Results_at_Chester_and_Penn_Landing.Rdata"))
+
+#Load the saved model results
+load(paste0(dataPath,"HADO_Results_at_Chester_and_Penn_Landing.Rdata"))
+
+# Calculate Percent Oxygen Saturation and extract the date-part from the time stamp.
+HADO_WQ <- HADO_WQ %>% 
+  rename(datetime=date) %>% 
+  mutate(date=as.Date(format(datetime,"%Y-%m-%d"))) %>% 
+  mutate(posat=DO*100/gas_O2sat(S=SAL,t=WT))
+
+# Calculate a time series of daily mean values from the 2-hourly data obtained
+# from DRBC's EFDC-WASP model.
+HADO.WQ <- HADO_WQ %>% 
+  group_by(Site,date) %>% 
+  summarize(do.HADO=mean(DO),wt.HADO=mean(WT),
+            sal.HADO=mean(SAL),posat.HADO=mean(posat)) %>% 
+  select(Site,date,do.HADO,wt.HADO,sal.HADO,posat.HADO) %>% 
+  ungroup()
+
+```
+
+# Combine modeled data with observed data
+Combined modeled values for Chester and Penn's Landing with observed daily means from the monitoring stations.  
+
+```{r Combine Modeled and Observed, echo=TRUE}
+
+# Load the observed data
+load(paste0(dataPath,"5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+load(paste0(dataPath,"5. DR_Chester_Summer_Complete.Rdata"))
+
+# Combine the summer data time series from both sites and calculate a date
+# variable from doy and year (used for merging).  Rename the variables to
+# identify them as "observed."
+wq_observed <- rbind(
+  drc_summer %>% mutate(Site="Chester"),
+  drpl_summer %>% mutate(Site="Penn's Landing")
+) %>% 
+  mutate(date=as.Date(doy,origin=as.Date(paste0(year-1,"-12-31")))) %>% 
+  rename(do.obs=do.mgL.mean,sal.obs=salinity.mean,wt.obs=wt.mean,posat.obs=posat.mean) %>% 
+  select(Site,date,do.obs,sal.obs,wt.obs,posat.obs)
+
+# Join the observed data to the HADO simulations.
+df <- left_join(wq_observed,HADO.WQ,by=c("Site","date")) %>% 
+  mutate(year=factor(year(date)),
+         doy=yday(date))
+
+# Joint the data to daily discharge data from Trenton.
+df <- left_join(df,select(discharge.daily,Date,Q),by=c("date"="Date"))
+```
+
+# Plot Modeled vs. Monitored Data for TSD
+
+```{r}
+
+plt <- df %>% 
+  filter(year %in% c(2012,2018,2019)) %>% 
+  mutate(Year=factor(year(date))) %>%
+  mutate(Site=factor(Site,levels=c("Penn's Landing","Chester"))) %>% 
+  ggplot(aes(x=do.obs,y=do.HADO,color=Year))+
+    facet_wrap(~Site)+
+    geom_point(size=1)+
+    geom_abline(slope=1,intercept=0,linetype=2)+
+    scale_x_continuous(limits=c(4,12),breaks=seq(4,12,by=2))+
+    scale_y_continuous(limits=c(4,12),breaks=seq(4,12,by=2))+
+    labs(x="Observed Dissolved Oxygen (mg/L)",
+         y="Modeled Dissolved Oxygen (mg/L)")+
+    nogrid+
+    theme(legend.position = c(0.90,0.25),
+          legend.background = element_blank())
+plt
+
+png(filename=paste0(figurePath,"6.0 Observed vs. Modeled DO at Gauges.png"),
+    width=6,height=3,units="in",res=300)
+  plt
+dev.off()
+
+```
+
+# Build a model for Chester
+
+```{r}
+
+# Extract just the observations from Chester
+df.Chester <- df %>% filter(Site=="Chester")
+
+# Graph the HADO and observed data, showing 1:1 line.  At Chester, DO values for 
+# HADO are mainly higher when DO is low, and trend toward the 1:1 line at higher
+# DO levels.
+df.Chester %>% filter(!is.na(do.HADO)) %>% 
+ggplot(aes(x=do.obs,y=do.HADO,color=droplevels(year)))+
+  geom_point()+
+  geom_abline(intercept=0,slope=1,linetype=2)+
+  coord_fixed(xlim=c(5,12),ylim=c(5,12))+
+  guides(color=guide_legend(title="Year"))+
+  theme_classic()+
+  theme(legend.position=c(0.8,0.2))+
+  labs(x="DO (mg/L) from Monitoring Stations",y="DO (mg/L) predicted by EFDC-WASP (HADO)")+
+  ggtitle("Observed vs. HADO Simulated DO Concetnration",
+          subtitle="Chester")
+
+# Fit a GAM with a smooth effect for DO, DOY and flow (Q).  The smooth for 
+# DO.obs is limited to 3 knots (k=3) because the effect is expected to be smooth
+# but not necessarily linear.  Show the summary statistics for the GAM.
+fit <- gam(do.HADO ~ s(do.obs,k=3) + s(Q,k=4),data=df.Chester)
+summary(fit)
+
+# Show the partial effects using gratia::draw
+draw(fit)
+
+# Use the GAM to predict DO for all the dates.
+tmp <- predict(fit,df.Chester)
+# restored prediction is the greater of the GAM-predicted value or the observed DO
+# which assumes that there is no reasonable case where NH4-loading reductions results
+# in a decrease in DO
+df.Chester$do.pred <- pmax(tmp,df.Chester$do.obs)
+
+# Calculate rmse using modelr
+rmse(fit,df.Chester)  # = 0.38 mg/L
+
+# Show predicted vs. observed with the 1:1 line.
+df.Chester %>% filter(!is.na(do.HADO)) %>% 
+ggplot(aes(x=do.HADO,y=do.pred,color=droplevels(year)))+
+  geom_point()+
+  geom_abline(slope=1,intercept=0,linetype=2)+
+  guides(color=guide_legend(title="Year"))+
+  coord_fixed(xlim=c(5,12),ylim=c(5,12))+
+  theme_classic()+
+  theme(legend.position=c(0.8,0.2))+
+  labs(x="DO (mg/L) from HADO Simulations",y="DO (mg/L) predicted by GAM")+
+  ggtitle("Predicted by GAM vs. HADO Simulated DO Concetnration",
+          subtitle="Chester")
+
+# Graph the existing and modeled HADO DO concentrations
+df.Chester %>% select(year,doy,do.obs,do.pred) %>% 
+  pivot_longer(cols=c("do.obs","do.pred"),names_to = "scenario",values_to="do.mgL") %>% 
+  mutate(scenario=factor(scenario,levels=c("do.obs","do.pred"),labels=c("Existing","HADO"))) %>% 
+ggplot()+
+  geom_line(aes(x=doy,y=do.mgL,color=scenario))+
+  facet_wrap(~year)+
+  labs(x="Day of Year",y="DO (mg/L)")+
+  nogrid+
+  theme(legend.position="top")+
+  ggtitle("Existing and Modeled HADO DO Concentrations",subtitle="Chester")
+
+# Calculate the 10th Percentile DO for every year in observed and HADO
+p.10 <- df.Chester %>% 
+  group_by(year) %>% 
+  summarize(HADO.10=quantile(do.pred,prob=0.1),
+            OBS.10=quantile(do.obs,prob=0.1),
+            MOD.10=quantile(do.HADO,prob=0.1,na.rm=TRUE)) %>% 
+  mutate(delta_DO=HADO.10-OBS.10)
+knitr::kable(p.10,caption="Estimates of 10th Percentile DO (mg/L)")
+
+
+# Summary statistics for change in 10th percentile DO
+summary(p.10$delta_DO)
+
+# Calculate the median DO for every year in observed and HADO
+med <- df.Chester %>% 
+  group_by(year) %>% 
+  summarize(HADO.med=quantile(do.pred,prob=0.5),
+            OBS.med=quantile(do.obs,prob=0.5),
+            MOD.med=quantile(do.HADO,prob=0.5,na.rm=TRUE)) %>% 
+  mutate(delta_DO=HADO.med-OBS.med)
+knitr::kable(med,caption="Estimates of Median DO (mg/L)")
+
+# Summary statistics for change in median DO
+summary(med$delta_DO)
+
+```
+
+# Build a model for restored Penn's Landing
+
+```{r}
+
+# Extract just the observations from Penn's Landing
+df.Penn <- df %>% filter(Site=="Penn's Landing")
+
+# Graph the HADO and observed data, showing 1:1 line.  DO values for 
+# HADO are mainly higher when DO is low, and trend toward the 1:1 line at higher
+# DO levels.
+df.Penn %>% filter(!is.na(do.HADO)) %>% 
+ggplot(aes(x=do.obs,y=do.HADO,color=droplevels(year)))+
+  geom_point()+
+  geom_abline(intercept=0,slope=1,linetype=2)+
+  coord_fixed(xlim=c(5,12),ylim=c(5,12))+
+  guides(color=guide_legend(title="Year"))+
+  theme_classic()+
+  theme(legend.position=c(0.8,0.2))+
+  labs(x="DO (mg/L) from Monitoring Stations",y="DO (mg/L) predicted by EFDC-WASP (HADO)")+
+  ggtitle("Observed DO vs. HADO Simulated DO Concentration",
+          subtitle="Penn's Landing")
+
+# Fit a GAM with a smooth effect for DO, DOY and flow (Q).  The smooth for 
+# DO.obs is limited to 3 knots (k=3) because the effect is expected to be smooth
+# but not necessarily linear.  Show the summary statistics for the GAM.
+fit <- gam(do.HADO ~ s(do.obs,k=3) + s(Q,k=4),data=df.Penn)
+summary(fit)
+
+# Show the partial effects using gratia::draw
+draw(fit)
+
+# Use the GAM to predict DO for all the dates.
+tmp <- predict(fit,df.Penn)
+# restored prediction is the greater of the GAM-predicted value or the observed DO
+# which assumes that there is no reasonable case where NH4-loading reductions results
+# in a decrease in DO
+df.Penn$do.pred <- pmax(tmp,df.Penn$do.obs)
+
+# Calculate root mean square error
+rmse(fit,df.Penn)  # = 0.40 mg/L
+
+# Show predicted vs. observed with the 1:1 line.
+df.Penn %>% filter(!is.na(do.HADO)) %>% 
+ggplot(aes(x=do.HADO,y=do.pred,color=droplevels(year)))+
+  geom_point()+
+  geom_abline(slope=1,intercept=0,linetype=2)+
+  guides(color=guide_legend(title="Year"))+
+  coord_fixed(xlim=c(5,12),ylim=c(5,12))+
+  theme_classic()+
+  theme(legend.position=c(0.8,0.2))+
+  labs(x="DO (mg/L) from HADO Simulations",y="DO (mg/L) predicted by GAM")+
+  ggtitle("Predicted by GAM vs. HADO Simulated DO Concetnration",
+          subtitle="Penn's Landing")
+
+# Graph the existing and modeled HADO DO Concentrations
+df.Penn %>% select(year,doy,do.obs,do.pred) %>% 
+  pivot_longer(cols=c("do.obs","do.pred"),names_to = "scenario",values_to="do.mgL") %>% 
+  mutate(scenario=factor(scenario,levels=c("do.obs","do.pred"),labels=c("Existing","HADO"))) %>% 
+ggplot()+
+  geom_line(aes(x=doy,y=do.mgL,color=scenario))+
+  facet_wrap(~year)+
+  labs(x="Day of Year",y="DO (mg/L)")+
+  nogrid+
+  theme(legend.position="top")+
+  ggtitle("Existing and Modeled HADO DO Concentrations",subtitle="Penn's Landing")
+
+# Calculate the 10th Percentile DO for every year in observed and HADO
+p.10 <- df.Penn %>% 
+  group_by(year) %>% 
+  summarize(HADO.10=quantile(do.pred,prob=0.1),
+            OBS.10=quantile(do.obs,prob=0.1),
+            MOD.10=quantile(do.HADO,prob=0.1,na.rm=TRUE)) %>% 
+  mutate(delta_DO=HADO.10-OBS.10)
+knitr::kable(p.10,caption="Estimates of 10th Percentile DO (mg/L)")
+
+# Summary statistics for change in 10th percentile DO
+summary(p.10$delta_DO)
+
+# Calculate the median DO for every year in observed and HADO
+med <- df.Penn %>% 
+  group_by(year) %>% 
+  summarize(HADO.med=quantile(do.pred,prob=0.5),
+            OBS.med=quantile(do.obs,prob=0.5),
+            MOD.med=quantile(do.HADO,prob=0.5,na.rm=TRUE)) %>% 
+  mutate(delta_DO=HADO.med-OBS.med)
+knitr::kable(med,caption="Estimates of Median DO (mg/L)")
+
+# Summary statistics for change in median DO
+summary(med$delta_DO)
+
+```
+
+# Save the estimates of restored DO in an R Data set
+
+```{r}
+
+restoredWQ <- rbind(df.Penn,df.Chester) %>% 
+  select(Site,date,doy,year,do.pred,sal.obs,wt.obs) %>% 
+  rename(do.mean=do.pred,sal.mean=sal.obs,wt.mean=wt.obs) %>% 
+  mutate(posat.mean=do.mean*100/gas_O2sat(S=sal.mean,t=wt.mean))
+
+#save(restoredWQ,file=paste0(dataPath,"6.0 Estimates of Restored DO.Rdata"))
+
+```
+
+# Calculate statistics on Observed and Restored DO
+- needed for Technical Support Document
+
+```{r}
+
+# Build single file with observed data
+df.obs <- rbind(
+drc_summer %>% 
+  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
+  select(date,posat.mean) %>% 
+  mutate(Site="Chester"),
+drpl_summer %>% 
+  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
+  select(date,posat.mean) %>% 
+  mutate(Site="Penn's Landing")
+) %>% mutate(type="Observed")
+
+# Build identical file with restored data
+df.res <- restoredWQ %>% 
+    select(date,posat.mean,Site)
+
+# Combine, transpose, and calculate difference
+df <- rbind(df.obs %>% mutate(type="Observed"),
+            df.res %>% mutate(type="Restored")) %>%      
+  pivot_wider(id_cols=all_of(c("Site","date")),
+               names_from = "type",
+               values_from = "posat.mean") %>% 
+  mutate(change=Restored-Observed)
+
+names(df) <- c("Site","date","Observed.POSAT","Restored.POSAT","Change.POSAT")
+
+```
+
+# Repeat above steps for DO mg/L
+
+```{r}
+# Build single file with observed data
+df.obs <- rbind(
+drc_summer %>% 
+  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
+  select(date,do.mgL.mean) %>% 
+  mutate(Site="Chester"),
+drpl_summer %>% 
+  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
+  select(date,do.mgL.mean) %>% 
+  mutate(Site="Penn's Landing")
+) %>% mutate(type="Observed")
+
+# Build identical file with restored data
+df.res <- restoredWQ %>% 
+    select(date,do.mean,Site) %>% 
+    rename(do.mgL.mean=do.mean)
+
+# Combine, transpose, and calculate difference
+df.do <- rbind(df.obs %>% mutate(type="Observed"),
+            df.res %>% mutate(type="Restored")) %>%      
+  pivot_wider(id_cols=all_of(c("Site","date")),
+               names_from = "type",
+               values_from = "do.mgL.mean") %>% 
+  mutate(change=Restored-Observed)
+
+names(df.do) <- c("Site","date","Observed.DO.mgL","Restored.DO.mgL","Change.DO.mgL")
+
+df <- cbind(df,select(df.do,-date,-Site)) %>% 
+  mutate(Site=factor(Site)) %>%
+  mutate(season=cut(yday(date),breaks=c(1,181,305,366),labels=c("Spawning","Growth","Overwinter")))
+```
+
+# Calculate statistics on differences during growth season
+Differences were calculated for estimates from July 1 to October 31.
+Under the restored scenario, POSAT was projected to increase from the observed data by 9.3% with a 95% confidence interval of (9.14,9.38). DO (mg/L) in the restored scenario was projected to increase from the observed data by 0.74 mg/L with a 95% confidence interval of (0.731,0.750). Compared to Chester, the increase in POSAT was 2.33% (+/- 0.119) less at Penn's Landing.  Similarly, the increase in DO (mg/L) was 0.18mg/L less at Penn's Landing than at Chester.
+
+```{r}
+
+# Define a variable for just the growth season
+df.growth <- df %>% filter(season=="Growth")
+
+# Show estimates and confidence interval for POSAT and DO
+t.test(df.growth$Change.POSAT)
+t.test(df.growth$Change.DO.mgL)
+
+# Calculate for differences by Site
+fit <- lm(Change.POSAT ~ Site,data=df.growth)
+summary(fit)
+fit <- lm(Change.DO.mgL ~ Site,data=df.growth)
+summary(fit)
+
+# 
+df %>% group_by(Site) %>% 
+  summarize(Change.POSAT=mean(Change.POSAT,na.rm=TRUE),
+            Change.DO.mgL=mean(Change.DO.mgL,na.rm=TRUE))
+
+```

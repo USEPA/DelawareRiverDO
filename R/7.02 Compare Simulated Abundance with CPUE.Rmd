@@ -1,0 +1,163 @@
+---
+title: "7.02 Compare Simulated Abundance with CPUE.Rmd"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(wesanderson)
+library(lmodel2)
+library(gt)
+
+basic_theme <- theme_classic() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+nogrid <- theme(panel.grid=element_blank())
+largetext <- theme(axis.text=element_text(size=12),
+                   axis.title = element_text(size=12),
+                   strip.text=element_text(size=12))
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+figuresPath <- "figures/"
+
+```
+
+# Overview
+This program loads the simulated abundance from the cohort models at Chester and Penn's Landing for 2002-2022.  It also loads the young of the year (YOY) juvenile abundance survey data obtained from the DNREC monitoring program.  The program makes a graph comparing predicted survivorship on October 31 from the model with catch per unit effort (CPUE) from the surveys.  CPUE is shown on a log scale because CPUE increased exponentially with survivorship.
+
+I would expect that CPUE would be linearly related to % survivorship, however, the relationship for Penn's Landing was log-linear, while there was no clear relationship at all at Chester.
+
+## Load the data sets
+
+```{r LoadDataSets}
+
+# Load the simulation results for Chester and Penn's Landing
+load(paste0(dataPath,"5.03 Chester Cohort Simulation 2002-2022.Rdata"))
+load(paste0(dataPath,"5.04 Penns Landing Cohort Simulation 2002-2022.Rdata"))
+
+# Create variable yoy.survey with YOY survey data.
+source("raw/create_yoy_survey_data.R")
+
+```
+
+# Review CPUE Data
+
+```{r}
+
+# print a table showing CPUE data so that it can be compared with original data
+# for QA
+gt(yoy.survey)
+
+```
+
+## Calculate Simulated Abundance on 10/31 and Merge with CPUE data 
+
+```{r Calculate Simulated Abundance}
+
+# Combine data from Chester and Penn's Landing, 
+# calculate the percent survivorship on 10/31 (doy=304)
+# by dividing the abundance by the initial abundance
+# which was 10,000.
+df <- rbind(
+  sim.Chester.Zmin %>% 
+  filter(doy==304) %>% # doy=304 is October 31.
+  mutate(year=as.numeric(year),
+         survivorship=abundance*100/10000,
+         Site="Chester") %>% 
+  select(Site,year,survivorship),
+  sim.PennsLanding.Zmin %>% 
+  filter(doy==304) %>% 
+  mutate(year=as.numeric(year),
+         survivorship=abundance*100/10000,
+         Site="Penn's Landing") %>% 
+  select(Site,year,survivorship)
+)
+
+# merge combined data with fish survey data
+df <- left_join(df,yoy.survey,by="year") %>% 
+  mutate(Site=factor(Site,levels=c("Penn's Landing","Chester"))) %>% 
+  mutate(log.cpue=log10(yoy.cpue.1000))
+```
+
+# Fit Correlations and Model II Regressions 
+
+```{r Fit Model II Regressions, echo=FALSE}
+
+# Penn's Landing
+df.1 <- df %>% filter(yoy.cpue.1000>0) %>%
+  filter(Site=="Penn's Landing")
+
+cor(df.1$survivorship,df.1$log.cpue,use="pairwise")^2
+cor.test(df.1$survivorship,df.1$log.cpue,use="pairwise")
+
+# Chester
+df.2 <- df %>% filter(yoy.cpue.1000>0) %>%
+  mutate(log.cpue=log(yoy.cpue.1000)) %>% 
+  filter(Site=="Chester")
+
+cor(df.2$survivorship,df.2$log.cpue,use="pairwise")^2
+cor.test(df.2$survivorship,df.2$log.cpue,use="pairwise")
+
+# Summary statistics for Penn's Landing
+summary(select(df.1,yoy.cpue.1000,survivorship))
+
+# Fit Model II regressions
+fit <- lmodel2(log.cpue ~ survivorship,data=df.1,nperm=99,
+               range.x="relative",range.y="interval")
+# Get coefficients of Ranged Major Axis Regression
+rma <- fit$regression.results[4,]
+
+```
+
+# Graph Survivorship vs. CPUE
+
+```{r GraphSurvivorship}
+
+dummy <- data.frame(Site=factor(c("Penn's Landing","Chester")),
+                    slp=c(as.numeric(rma[3]),NA),
+                    int=c(as.numeric(rma[2]),NA),
+                    lab_x=c(45,NA),
+                    lab_y=c(0.0017,NA),
+                    lab_text=c("r2=0.56\np<0.01",NA))
+
+plt <- df %>%
+  mutate(Site=factor(Site,levels=c("Penn's Landing","Chester"))) %>% 
+  filter(yoy.cpue.1000>0) %>% 
+  ggplot(aes(x=survivorship,y=yoy.cpue.1000))+
+  facet_wrap(~Site,ncol=1)+
+  geom_point(size=5,color=pal[2])+
+  geom_abline(data=dummy,aes(slope=slp,intercept=int),
+                 linewidth=1,color=pal[2])+
+  scale_y_log10()+
+  labs(x="Simulated Cohort Survivorship (%)",y="Young-of-the-Year Catch Per Unit Effort")+
+  geom_text(data=dummy,aes(x=lab_x,y=lab_y,label=lab_text))+
+  nogrid
+plt
+
+# This creates Figure 4 in the TSD
+pdf(file=paste0(figuresPath,"7.02 CPUE vs. Simulated Survivorship.pdf"),
+    width=4, height=6, paper="letter")
+  plt
+dev.off()
+
+```
+
+# Compared expected CPUE with predicted
+
+```{r Expected CPUE vs Predicted}
+
+tmp <- data.frame(surv=c(1,10,30)) %>% 
+  mutate(log_rma_CPUE=as.numeric(rma[2])+surv*as.numeric(surv*rma[3])) %>% 
+  mutate(rma_CPUE=10^log_rma_CPUE)
+tmp
+
+```
+

@@ -1,0 +1,124 @@
+---
+title: "7.03 Graph HSI for existing and restored WQ"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(wesanderson)
+
+basic_theme <- theme_classic() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+large_text <- theme(
+  axis.text=element_text(size=18),
+  axis.title=element_text(size=18),
+  strip.text=element_text(size=18))
+nogrid <- theme(panel.grid=element_blank())
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+figuresPath <- "figures/"
+outputsPath <- "outputs/"
+
+```
+
+## Load data for HSI
+
+```{r}
+# Load HSI Data
+load(paste0(dataPath,"5.03 Chester Cohort Simulation 2002-2022.Rdata"))
+load(paste0(dataPath,"5.04 Penns Landing Cohort Simulation 2002-2022.Rdata"))
+
+load(paste0(dataPath,"6.01 Simulated HSI using Restored DO.Rdata"))
+# confirmed this has exactly the same HSI values as original program 5.72 
+
+hsi.observed <- rbind(
+  sim.Chester.Zmin %>% mutate(Site="Chester",type="Observed"),
+  sim.PennsLanding.Zmin %>% mutate(Site="Penn's Landing",type="Observed")) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(between(doy,182,304)) %>% 
+  group_by(Site,type,year) %>% 
+  summarize(mean.growth=mean(growth),mean.Zmin=mean(mortality)) %>% 
+  mutate(mean.phi=mean.growth-mean.Zmin) %>% 
+  ungroup()
+
+hsi.restored <- restoredHSI %>% mutate(type="Restored")
+
+# Reverse factor order so Penn's Landing is first
+hsi <- rbind(hsi.observed,hsi.restored) %>% 
+    mutate(Site=factor(Site)) %>% 
+    mutate(Site=factor(Site,levels=levels(Site)[c(2,1)]))
+
+# Graph HSI vs. year by scenario and site
+plt <- ggplot(hsi %>% filter(year !=2010),aes(x=year,y=mean.phi))+
+  geom_col(fill=pal[1])+
+  facet_grid(Site~type,scales="free_y")+
+  scale_x_continuous(breaks=seq(2002,2022,by=4))+
+  geom_hline(yintercept=0)+
+  #geom_hline(yintercept=-0.00966,linetype=2,color=pal[2])+
+  #geom_hline(yintercept=-0.0192,linetype=2,color=pal[5])+
+  #scale_y_continuous(limits=c(-0.085,0.01),breaks=seq(-0.08,0.01,by=0.02))+
+  nogrid+
+  theme(legend.position="top")+
+  labs(y="Habitat Suitability Index",x="")
+plt
+
+options(scipen=999)
+plt.2 <- ggplot(hsi %>% filter(year !=2010),aes(x=year,y=100*exp(123*mean.phi)))+
+  geom_col(fill=pal[1])+
+  facet_grid(Site~type)+
+  scale_x_continuous(breaks=seq(2002,2022,by=4))+
+  geom_hline(yintercept=100,linetype=2)+
+  nogrid+
+  theme(legend.position="top")+
+  labs(y="% of Initial Biomass on October 31",x="")
+  #coord_cartesian(ylim=c(0.001,4))
+plt.2
+
+options(scipen=999)
+plt.3 <- hsi %>% 
+  filter(year !=2010) %>%
+  filter(Site=="Chester") %>%
+  mutate(type=factor(type,levels=c("Observed","Restored"),
+                         labels=c("Observed DO","Restored DO"))) %>% 
+  ggplot(aes(x=year,y=100*exp(123*mean.phi)-100))+
+    geom_col(fill=pal[1])+
+    facet_wrap(~type,ncol=2)+
+    scale_x_continuous(breaks=seq(2002,2022,by=8))+
+    geom_hline(yintercept=0,linetype=2)+
+    nogrid+
+    theme(legend.position="top")+
+    labs(y="% Change Biomass",x="")
+plt.3
+
+
+# This creates figure 7 in the TSD. Additional labels were added 
+# in Adobe Illustrator to make the final figure. Additional y-axis
+# labels were added that express the HSI as percent change in biomass
+# as explained in the figure legend.  These labels were added in 
+# Adobe Illustrator.
+pdf(paste0(figuresPath,"7.03 HSI by Site and Scenario.pdf"),paper="letter",width=,height=6)
+  plt
+dev.off()
+
+# This figure does not appear in the TSD.
+pdf(paste0(figuresPath,"7.03 Biomass Chg by Site and Scenario.pdf"),paper="letter",width=,height=6)
+  plt.2
+dev.off()
+
+# This figure does not appear in the TSD.
+png(paste0(figuresPath,"7.03 Biomass Chg (Chester Only) for CERF Talk.png"), width=7,height=5,
+    units="in",res=150)
+  plt.3
+dev.off()
+
+```
+

@@ -5,7 +5,7 @@
 # Create a function to impute missing values for the data in one year.
 imputeByYear <- function(Year) {
   
-  tmp <- drc %>% 
+  tmp <- ts_input %>% 
     filter(year==Year,between(yday(date),152,334)) %>% 
     mutate(doy=yday(date))
   

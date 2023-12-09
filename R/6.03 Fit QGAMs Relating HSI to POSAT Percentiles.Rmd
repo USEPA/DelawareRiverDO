@@ -1,0 +1,335 @@
+---
+title: "6.03 Fit QGAMs to HSI vs. POSAT Percentiles"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(marelac)
+library(wesanderson)
+library(viridis)
+library(qgam)
+
+large_text <- theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14),
+        strip.text=element_text(size=14))
+no_grid <- theme(panel.grid=element_blank())
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+figuresPath <- "figures/"
+outputsPath <- "outputs/"
+```
+
+# Load Percentiles and HSI data
+
+```{r Load Data}
+
+# Load Percentiles
+load(paste0(dataPath,"6.02 DO and POSAT Percentiles.Rdata"))
+
+# Load HSI Data
+load(paste0(dataPath,"5.03 Chester Cohort Simulation 2002-2022.Rdata"))
+load(paste0(dataPath,"5.04 Penns Landing Cohort Simulation 2002-2022.Rdata"))
+
+load(paste0(dataPath,"6.01 Simulated HSI using Restored DO.Rdata"))
+# confirmed this has exactly the same HSI values as original program 5.72 
+
+hsi.observed <- rbind(
+  sim.Chester.Zmin %>% mutate(Site="Chester",type="Observed"),
+  sim.PennsLanding.Zmin %>% mutate(Site="Penn's Landing",type="Observed")) %>% 
+  mutate(year=as.numeric(year)) %>% 
+  filter(between(doy,182,304)) %>% 
+  group_by(Site,type,year) %>% 
+  summarize(mean.growth=mean(growth),mean.Zmin=mean(mortality)) %>% 
+  mutate(mean.phi=mean.growth-mean.Zmin) %>% 
+  ungroup()
+
+hsi.restored <- restoredHSI %>% mutate(type="Restored")
+
+hsi <- rbind(hsi.observed,hsi.restored)
+
+```
+
+## Calculate descriptive statistics for HSI.
+These values appear in the TSD on page 32.
+
+```{r}
+# Descriptive statistics for HSI
+hsi %>% filter(type=="Observed") %>% select(mean.phi) %>% summary()
+hsi %>% filter(type=="Restored") %>% select(mean.phi) %>% summary()
+
+# Descriptive statistics for observed DO.
+# HSI varied from -0.082 at Penn's Landing in 2005 to 0.0056 at
+# Chester in 2018. Biomass change varied from nearly 100% loss (<0.01% remaining)
+# to a nearly 2-fold increase.
+tmp <- hsi.observed %>% 
+  mutate(biomass.change = exp(mean.phi*123))
+tmp <- tmp[order(tmp$mean.phi),]
+tmp[c(1,41),]
+
+hsi.observed %>% 
+  group_by(Site) %>% 
+  summarize(mean.phi = mean(mean.phi))
+
+fit <- lm(mean.phi ~ year, data=hsi.observed) 
+summary(fit)
+
+hsi %>% group_by(type) %>% 
+  summarize(hsi.mean=mean(mean.phi))
+
+```
+
+# Combine Percentiles and HSI
+
+```{r Combine Percentiles and HSI}
+
+#Join HSI data with percentiles
+df.obs <- left_join(hsi,percentiles,by=c("Site","type","year")) %>% 
+  filter(year != 2010) %>% 
+  filter(percentile %in% c(0.1,0.5))
+
+```
+
+## Fit QGAMs for POSAT and Calculate Predicted HSI
+
+```{r Fit qGAMs}
+
+# Create a function to predict QGAMs
+fitQGAM.POSAT <- function(pct=NULL,typ=NULL,tau=0.5) {
+  if(typ=="Combined") {
+  df.subset <- df.obs %>% 
+    filter(percentile==pct)
+  } else {
+  df.subset <- df.obs %>% 
+  filter(percentile==pct & type==typ)
+  }
+  fit <- qgam(mean.phi ~ s(posat,k=3),qu=tau,data=df.subset)
+  return(fit)
+}
+
+# Fit QGAMs to Observed, Restored, and Combined Data
+fit.10.obs <- fitQGAM.POSAT(0.10,"Observed")
+fit.50.obs <- fitQGAM.POSAT(0.50,"Observed")
+fit.10.res <- fitQGAM.POSAT(0.10,"Restored")
+fit.50.res <- fitQGAM.POSAT(0.50,"Restored")
+fit.10.com <- fitQGAM.POSAT(0.10,"Combined")
+fit.50.com <- fitQGAM.POSAT(0.50,"Combined")
+
+# Model summary for 10th Percentile Observed
+summary(fit.10.obs)
+check(fit.10.obs) # check for convergence
+
+# Model summary for Median Observed
+summary(fit.50.obs)
+check(fit.50.obs) # check for convergence
+
+# Model summary for 10th Percentile Restored
+summary(fit.10.res)
+check(fit.10.res) # check for convergence
+
+# Model summary for Median Restored
+summary(fit.50.res)
+check(fit.50.res) # check for convergence
+
+# Model summary for 10th Percentile Combined Data
+summary(fit.10.com)
+check(fit.10.com) # check for convergence
+
+# Model summary for Median Combined Data
+summary(fit.50.com)
+check(fit.50.com) # check for convergence
+
+## Create a function to use QGAM models to predict PP at a range of percentiles
+qgamPredict <- function(inputModel,pct=NULL,typ=NULL) {
+  if(typ=="Combined") {
+    df.subset <- df.obs %>% filter(percentile==pct)
+  } else {
+    df.subset <- df.obs %>% filter(type==typ & percentile==pct)
+  }
+  # create a template that spans the range of observations for the type and percentile
+  # of interest
+  df.pred <- data.frame(posat=seq(round(min(df.subset$posat),2),
+                               round(max(df.subset$posat),2),
+                               by=0.01))
+  tmp <- predict(inputModel,df.pred,se.fit=TRUE)
+  df.pred$pp.pred <- tmp$fit
+  df.pred$se <- tmp$se.fit
+  df.pred <- df.pred %>% mutate(percentile=pct,type=typ)
+  return(df.pred)
+}
+
+df.pred <- rbind(
+  qgamPredict(fit.10.obs,pct=0.1,typ="Observed"),
+  qgamPredict(fit.50.obs,pct=0.5,typ="Observed"),
+  qgamPredict(fit.10.res,pct=0.1,typ="Restored"),
+  qgamPredict(fit.50.res,pct=0.5,typ="Restored"),
+  qgamPredict(fit.10.com,pct=0.1,typ="Combined"),
+  qgamPredict(fit.50.com,pct=0.5,typ="Combined")
+)
+
+# save predictions
+q.predictions.POSAT <- df.pred
+save(q.predictions.POSAT,file=paste0(dataPath,"6.03 Predicted PP and POSAT percentiles.Rdata"))
+
+# Export data for CSV
+write.csv(df.pred,file=paste0(outputsPath,"6.03 Predicted PP and POSAT percentiles.csv"))
+
+```
+
+# Calculate lowest POSAT with HSI>0
+This code chunk calculates the POSAT thresholds for HSI>0 that appear in Table 3 of the TSD. 
+```{r }
+
+# Calculate and display the lowest DO percentile associated with HSI>0
+crit <- df.pred %>% 
+  filter(pp.pred>=0) %>% 
+  group_by(type,percentile) %>% 
+  summarize(crit=min(posat)) %>% 
+  .[c(3,4,5,6,1,2),]
+crit.ucl <- df.pred %>% 
+  mutate(hsi.ll=pp.pred-se) %>% 
+  filter(hsi.ll>0) %>% 
+  group_by(type,percentile) %>% 
+  summarize(crit.ucl=min(posat))
+crit.lcl <- df.pred %>% 
+  mutate(hsi.ul=pp.pred+se) %>% 
+  filter(hsi.ul>0) %>% 
+  group_by(type,percentile) %>% 
+  summarize(crit.lcl=min(posat))
+crit.all <- full_join(crit.ucl,crit.lcl,by=c("type","percentile")) %>% 
+  full_join(crit,by=c("type","percentile")) %>% 
+  .[c(5,6,3,4,1,2),c(1,2,5,4,3)]
+crit.all
+```
+
+# Graph POSAT vs. HSI with Thresholds
+
+```{r Graph POSAT vs HSI}
+
+# Graph the POSAT vs. HSI values and associated QGAM model fit
+# for Observed and Restored Seperately
+pred.OandR <- df.pred %>% filter(type != "Combined")
+plt <- ggplot()+
+  geom_ribbon(data=pred.OandR,aes(x=posat,ymin=pp.pred-se,
+    ymax=pp.pred+se),alpha=0.2)+
+  geom_point(data=df.obs,aes(x=posat,y=mean.phi,color=Site))+
+  geom_line(data=pred.OandR,aes(x=posat,y=pp.pred))+
+  facet_grid(type~percentile,scales="free")+
+  geom_hline(yintercept=0,linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.1 & type=="Observed"),
+             aes(xintercept=crit$crit[1]),linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.5 & type=="Observed"),
+             aes(xintercept=crit$crit[2]),linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.1 & type=="Restored"),
+             aes(xintercept=crit$crit[3]),linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.5 & type=="Restored"),
+             aes(xintercept=crit$crit[4]),linetype=2)+
+  labs(x="Percent Oxygen Saturation",y="HSI")+
+  no_grid+
+  theme(legend.position="top")+
+  guides(color=guide_legend(title="Site"))
+plt
+
+# This generates Figure 10 in the TSD. 
+pdf(file=paste0(figuresPath,"6.03 HSI vs. POSAT quantiles.pdf"),
+    width=6,height=6,paper="letter")
+  plt
+dev.off()
+
+# Graph the POSAT vs. HSI values and associated QGAM model fit
+# for Observed and Restored Combined
+pred.OandR <- df.pred %>% filter(type == "Combined")
+plt <- ggplot()+
+  geom_ribbon(data=pred.OandR,aes(x=posat,ymin=pp.pred-se,
+    ymax=pp.pred+se),alpha=0.2)+
+  geom_point(data=df.obs,aes(x=posat,y=mean.phi,color=Site))+
+  geom_line(data=pred.OandR,aes(x=posat,y=pp.pred))+
+  facet_wrap(~percentile,scales="free_x",ncol=2)+
+  geom_hline(yintercept=0,linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.1),
+             aes(xintercept=crit$crit[5]),linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.5),
+             aes(xintercept=crit$crit[6]),linetype=2)+
+  labs(x="Percent Oxygen Saturation",y="HSI")+
+  no_grid+
+  theme(legend.position="top")+
+  guides(color=guide_legend(title="Site"))
+plt
+
+# This generates Figure 11 in the TSD. 
+pdf(file=paste0(figuresPath,"6.03 HSI vs. POSAT Combined quantiles.pdf"),
+    width=6,height=4,paper="letter")
+  plt
+dev.off()
+
+```
+
+# Make "Zoomed-in" figure
+
+```{r eval=FALSE, include=FALSE}
+
+# This code does not contribute to the TSD.
+
+# Graph the POSAT vs. HSI values and associated QGAM model fit
+# for Observed and Restored Combined
+pred.OandR <- df.pred %>% filter(type == "Combined")
+plt <- ggplot()+
+  geom_ribbon(data=pred.OandR,aes(x=posat,ymin=pp.pred-se,
+    ymax=pp.pred+se),alpha=0.2)+
+  geom_point(data=df.obs,aes(x=posat,y=mean.phi,color=Site))+
+  geom_line(data=pred.OandR,aes(x=posat,y=pp.pred))+
+  facet_wrap(~percentile,scales="free_x",ncol=2)+
+  coord_cartesian(xlim=c(62,80),ylim=c(-0.01,0.01))+
+  scale_x_continuous(breaks=seq(60,84,by=2))+
+  scale_y_continuous(breaks=seq(-0.01,0.01,by=0.002))+
+  geom_hline(yintercept=0,linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.1),
+             aes(xintercept=crit$crit[5]),linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.5),
+             aes(xintercept=crit$crit[6]),linetype=2)+
+  labs(x="Percent Oxygen Saturation",y="HSI")+
+  no_grid+
+  theme(legend.position="top")+
+  guides(color=guide_legend(title="Site"))
+plt
+
+pdf(file=paste0(figuresPath,"6.03 HSI vs. DO Combined quantiles (zoomed).pdf"),
+    width=6,height=4,paper="letter")
+  plt
+dev.off()
+
+# Graph the POSAT vs. HSI values and associated QGAM model fit
+# for Observed and Restored Combined
+pred.OandR <- df.pred %>% filter(type == "Observed" & percentile==0.5)
+plt <- ggplot()+
+  geom_ribbon(data=pred.OandR,aes(x=posat,ymin=pp.pred-se,
+    ymax=pp.pred+se),alpha=0.2)+
+  geom_point(data=filter(df.obs,percentile==0.5),aes(x=posat,y=mean.phi,color=Site))+
+  geom_line(data=pred.OandR,aes(x=posat,y=pp.pred))+
+  #facet_wrap(~percentile,scales="free_x",ncol=2)+
+  coord_cartesian(xlim=c(66,85),ylim=c(-0.01,0.01))+
+  scale_x_continuous(breaks=seq(66,84,by=2))+
+  scale_y_continuous(breaks=seq(-0.01,0.01,by=0.002))+
+  geom_hline(yintercept=0,linetype=2)+
+  #geom_vline(data=subset(df.obs,percentile==0.1),
+  #           aes(xintercept=crit$crit[5]),linetype=2)+
+  geom_vline(data=subset(df.obs,percentile==0.5),
+             aes(xintercept=crit$crit[2]),linetype=2)+
+  labs(x="Percent Oxygen Saturation",y="Habitat Suitability Index")+
+  no_grid+
+  theme(legend.position="top")+
+  guides(color=guide_legend(title="Site"))
+plt
+
+png(file=paste0(figuresPath,"6.03 HSI vs. DO Obs-Med quantiles (zoomed).png"),
+    width=5,height=3,units="in",res=150)
+  plt
+dev.off()
+

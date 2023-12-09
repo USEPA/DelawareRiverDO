@@ -1,0 +1,83 @@
+---
+title: "6.02 Calculate Observed and Restored DO Percentiles.Rmd"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+library(marelac)
+library(wesanderson)
+library(viridis)
+
+large_text <- theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14),
+        strip.text=element_text(size=14))
+no_grid <- theme(panel.grid=element_blank())
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+dataPath <- "data/"
+```
+
+## Load Observed and Restored DO time series
+
+```{r Load DO Time Series, echo=TRUE}
+
+# Load Observed DO at Chester and Penn's Landing
+# Here the data are the 2002-2022 data for July 1 to October 31 with 
+# all missing values imputed
+load(paste0(dataPath,"5. DR_Chester_Summer_Complete.Rdata"))
+load(paste0(dataPath,"5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+
+# Load Restored DO
+load(paste0(dataPath,"6.0 Estimates of Restored DO.Rdata"))
+
+# Combined data from Chester and Penn's Landing and rename variables
+observed <- rbind(drc_summer %>% mutate(Site="Chester"),
+            drpl_summer %>% mutate(Site="Penn's Landing")) %>% 
+  mutate(type="Observed") %>% 
+  select(Site,type,doy,year,do.mgL.mean,posat.mean) %>% 
+  rename(do.mgL=do.mgL.mean,posat=posat.mean)
+
+# Rename variables from restored WQ data
+restored <- restoredWQ %>% 
+  mutate(type="Restored") %>% 
+  select(Site,type,doy,year,do.mean,posat.mean) %>% 
+  rename(do.mgL=do.mean,posat=posat.mean)
+
+# Combined observed and restored data
+df <- rbind(observed,restored)
+
+```
+
+# Calculate quantiles of restored DO    
+
+```{r Calculate Percentiles}
+
+#Create function to calculate percentiles
+calculatePercentiles <- function(pct=NULL) {
+df %>% 
+  filter(between(doy,182,304)) %>% 
+  group_by(type,Site,year) %>%   
+  summarize(do=quantile(do.mgL,probs=pct),
+            posat=quantile(posat,probs=pct)) %>% 
+  mutate(percentile=pct,
+         do=as.numeric(do),
+         posat=as.numeric(posat)) %>% 
+  ungroup()
+}
+
+pcts <- c(0.01,0.1,0.25,0.5)
+percentiles <- do.call("rbind",lapply(pcts,"calculatePercentiles"))
+percentiles <- percentiles %>% ungroup()
+
+percentiles <- percentiles %>% mutate(year=as.numeric(year))
+
+save(percentiles,file=paste0(dataPath,"6.02 DO and POSAT Percentiles.Rdata"))
+
+```
