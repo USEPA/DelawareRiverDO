@@ -29,7 +29,6 @@ Niklitschek, E. J. and D. H. Secor (2009). "Dissolved oxygen, temperature and sa
 
 Delaware River Basin Commission (2022). Modeling Eutrophication Processes in the Delaware River Estuary - Three Dimensional Water Quality Model. West Trenton, NJ: 179. https://www.nj.gov/drbc/library/documents/AnalysisAttainability/HydroModelCalibrationRpt_DRAFTdec2021.pdf
 
-Environmental Protection Agency (2022). Letter from Radhika Fox, Assistant Administor of EPA, to Messrs. Tambini, Garvin, LaTourette, and Ziadeh conveying the EPA Administrator's Determination that revised water quality standards are required to protect aquatic life in zones 3, 4, and upper 5 of the Delaware River Estuary. O. o. W. US Envirionmental Protection Agency. Washington, DC: 12. https://www.epa.gov/system/files/documents/2022-12/Administrator-Determination-DRBC-December-2022.pdf
 
 ## EPA Disclaimer
 
