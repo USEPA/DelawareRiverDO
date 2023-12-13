@@ -8,7 +8,7 @@ This project implements existing bioenergetics and juvenile cohort models (Nikli
 
 For questions or requests related to the code, users are encouraged to create a github "issue." E-mail inquiries may also be sent to James Hagy at the address below.
 
-James Hagy  
+James D. Hagy III  
 US Environmental Protection Agency  
 Office of Research and Development  
 Center for Environmental Measurement and Modeling  
