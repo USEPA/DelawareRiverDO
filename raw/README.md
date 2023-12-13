@@ -15,7 +15,7 @@ This R code file creates a data frame containing catch-per-unit effort data from
 | yoy.marcus.hook.1000 | Catch per unit effort of young-of-the-year juvenile Atlantic Sturgeon near Marcus Hook multiplied by 1000 |
 
 ## PennsLandingDV (retrieved 2023-03-09.txt)
-This file contains the raw data obtained from the USGS NWIS data portal and saved as .txt.  The file contains USGS's original self-documenting file header.
+This file contains the raw data obtained from the United States Geological Survey National Water Information System data portal (https://waterdata.usgs.gov/nwis) and saved as .txt.  The file contains USGS's original self-documenting file header.
 
 ## Sturgeon Age-Size Table.csv
 This file contains data provided by Ian Park (DNREC) documenting captures, tagging, and recaptures of juvenile Atlantic Sturgeon.  The first line contains variable headers, as follows: Original Tag Date,Fork Length (mm),Total Length (mm),Weight (g),PIT Tag Code,Project,Recapture Date,Fork Length (mm),Total Length (mm),Weight (g),PIT Tag Code,Recapture Project,Days at Large,TL Growth (g),TL Growth/Day (g/d)
