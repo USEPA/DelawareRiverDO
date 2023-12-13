@@ -21,7 +21,7 @@ hagy.jim@epa.gov
 ## Citation
 This code may be cited as supporting information for:
 
-EPA 2023. Technical Support Document for the Proposed Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River.  US Environmental Protection Agency, Office of Water.  Washington, DC.  71 pp.
+EPA 2023. Technical Support Document for the Proposed Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River.  US Environmental Protection Agency, Office of Water.  Washington, DC.  71 pp.  https://www.epa.gov/wqs-tech/water-quality-standards-delaware-river
 
 It is expected that an additional technical report will be available peer-review pending review: 
 
