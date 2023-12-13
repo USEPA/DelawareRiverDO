@@ -18,7 +18,7 @@ Narragansett, RI
 hagy.jim@epa.gov
 
 ## Citation
-This code may be cited as supporing information for:
+This code may be cited as supporting information for:
 
 EPA 2023. Technical Support Document for the Proposed Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River.  US Environmental Protection Agency, Office of Water.  Washington, DC.  71 pp.
 
