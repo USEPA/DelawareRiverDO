@@ -20,8 +20,12 @@ EPA 2025. Technical Support Document for the Final Rule: Water Quality Standards
 
 ## References
 Hagy, J. D. III (2025). "Quantifying Dissolved Oxygen Thresholds for Growth and Survival of Juvenile Atlantic Sturgeon in the Tidal-Fresh Delaware River. US Environmental Protection Agency, Office of Research and Development, Center for Environmental Measurement and Modeling, Atlantic Coastal Environmental Science Division, Narragansett, RI. EPA/600/R-24/002 62 pp. https://cfpub.epa.gov/si/si_public_file_download.cfm?p_download_id=549632&Lab=CEMM
+
 Niklitschek, E. J. and D. H. Secor (2005). "Modeling spatial and temporal variation of suitable nursery habitats for Atlantic sturgeon in the Chesapeake Bay." Estuarine, Coastal and Shelf Science 64(1): 135-148. http://doi.org/10.1016/j.ecss.2005.02.012
+
 Niklitschek, E. J. and D. H. Secor (2009). "Dissolved oxygen, temperature and salinity effects on the ecophysiology and survival of juvenile Atlantic sturgeon in estuarine waters: II. Model development and testing." Journal of Experimental Marine Biology and Ecology 381: S161-S172. http://doi.org/10.1016/j.jembe.2009.07.019
+
 Zheng, L., Chen, F., Bransky, J., Panuccio, E., Beganskas, S., Amidon, T., Yagecic, J., Suk, N., & Kavanagh, K.B. (2024). Modeling Eutrophication Processes in the Delaware River Estuary: Three-Dimensional Water Quality Model. (DRBC Report No. 2024-5). Delaware River Basin Commission. https://nj.gov/drbc/library/documents/ALDU_RestorationPathway/WQCalibration_FinalRpt_aug2024.pdf
-EPA Disclaimer
+
+## EPA Disclaimer
 The United States Environmental Protection Agency (EPA) GitHub project code is provided on an "as is" basis and the user assumes responsibility for its use. EPA has relinquished control of the information and no longer has responsibility to protect the integrity , confidentiality, or availability of the information. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by EPA. The EPA seal and logo shall not be used in any manner to imply endorsement of any commercial product or activity by EPA or the United States Government.
