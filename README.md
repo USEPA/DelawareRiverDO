@@ -1,7 +1,5 @@
 # Atlantic Sturgeon Cohort Model
 
-## Atlantic Sturgeon Cohort Model
-
 ## Overview
 This repository includes code, raw data, and outputs resulting from running the code, that were created and shared by the US Environmental Protection Agency (US EPA), Office of Research and Development, Center for Environmental Measurement and Modeling. These code and associated files were used by the US EPA to develop the final rule Water Quality Standards to Protect Aquatic Life in the Delaware River (September 2025). The code implements models and other analyses to quantify the effects of dissolved oxygen, salinity, and water temperature on juvenile Atlantic sturgeon in zones 3, 4, and upper 5 of the Delaware River.
 
