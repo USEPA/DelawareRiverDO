@@ -6,11 +6,12 @@ This repository includes code, raw data, and outputs resulting from running the 
 This project implements existing bioenergetics and juvenile cohort models (Niklitschek and Secor 2005, Niklitschek and Secor 2009; Hagy 2024) to predict the effect on juvenile Atlantic sturgeon of oxygen and water temperature conditions that occur in the Delaware River or are expected to occur in the Delaware River after additional pollutant load reductions are implemented (Zheng et al. 2024). The analysis quantifies a habitat suitability index (HSI) based on the response of juvenile Atlantic Sturgeon to salinity, water temperature, and dissolved oxygen and uses it to derive threshold values for dissolved oxygen that are expected to support use of the designated zones of the river for propagation by Atlantic Sturgeon and other oxygen sensitive species. Additional technical information is available at https://www.epa.gov/wqs-tech/water-quality-standards-delaware-river.
 
 For questions or requests related to the code, users are encouraged to create a github "issue." E-mail inquiries may also be sent to James Hagy at the address below.
-James D. Hagy III
-US Environmental Protection Agency
-Office of Water, U.S. Environmental Protection Agency
-Narragansett, RI
-hagy.jim@epa.gov
+
+James D. Hagy III  
+US Environmental Protection Agency  
+Office of Water, U.S. Environmental Protection Agency  
+Narragansett, RI  
+hagy.jim@epa.gov  
 
 ## Citation
 This code may be cited as supporting information for:
