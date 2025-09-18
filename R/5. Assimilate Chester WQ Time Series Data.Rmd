@@ -79,7 +79,7 @@ drChester_ctdo <- drChester_ctdo %>%
 
 ## Plot the data for initial evaluation 
 
-```{r tidy data}
+```{r tidy data, warning=FALSE}
 # Load the Chester Time Series if desired.  
 load(here("data","5. Chester_1961-2023.Rdata"))
 
@@ -145,10 +145,10 @@ ggplot(aes(x=dy,y=posat.mean,color=wt.mean))+
 plt
 
 # Creates Figure A1-1 of the TSD.
-# pdf(file=here("figures","5. 2002-2022 POSAT Time Series.pdf"),
-#     width=6,height=8,useDingbats = FALSE,paper="letter")
-#   plt
-# dev.off()
+ pdf(file=here("figures","5. 2002-2022 POSAT Time Series.pdf"),
+     width=6,height=8,useDingbats = FALSE,paper="letter")
+   plt
+ dev.off()
 
 ```
 
