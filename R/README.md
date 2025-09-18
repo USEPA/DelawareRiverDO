@@ -2,15 +2,13 @@
 
 # Description of R Code at /R
 
-These R-markdown files provide the core workflow for the analysis of water quality effects on juvenile Atlantic Sturgeon leading to development of dissolved oxygen criteria values as outlines in EPA's document "Technical Support Document for the Proposed Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River" (or "TSD").  The R-markdown riles utilize user-defined R-functions that are created by R-scripts included in the repository at <root>/functions. A REAMDME file at <root>/functions describes the functions.
+These R-markdown files provide the core workflow for the analysis of water quality effects on juvenile Atlantic Sturgeon leading to development of dissolved oxygen criteria values as outlines in EPA's document "Technical Support Document for the Final Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River" (or "TSD").  The R-markdown files utilize user-defined R-functions that are created by R-scripts included in the repository at <root>/functions. A REAMDME file at <root>/functions describes the functions.
 
-All programs are located in the sub-directory /R within the repository.  To ensure that file paths are properly specified, set the option "Evaluate Chunks in Directory" to "Project." This option is located on the Rmarkdown tab within the Global Options of RStudio.
-
-Additional code that creates user defined functions is located in the functions folder.  A README.md file in the functions folder provides information about that code.
+All programs are located in the sub-directory /R within the repository.
 
 ## R Packages
 
-The code was run using R version 4.2.2 (2022-10-31 ucrt) "Innocent and Trusting"  implemented in R Studio (2022.12.0 Build 353) running in Microsoft Windows 11 Enterprise (Version 10.0.22000 Build 22000) on a Dell Latitude 5300 2-in-1.
+The code was run using R version R version 4.4.2 (2024-10-31 ucrt) "Pile of Leaves"  implemented in R Studio (2024.12.0 Build 467) running in Microsoft Windows 11 Enterprise (Version 10.0.22631 Build 22631) on a Dell Latitude 5340.
 
 The code used the following R-packages.
 
@@ -30,7 +28,7 @@ The code used the following R-packages.
 | modelr | 0.1.11  |Evaluating generalized additive models |
 | EGRET | 3.0.9 | Obtaining water quality data from USGS data portal    |
 | lmodel2 | 1.7-3 | Fitting Model II regressions  |
-
+| here | 1.0.1 | Ensuring accurate paths to files |
 
 ## List of Programs (R Markdown)
 
