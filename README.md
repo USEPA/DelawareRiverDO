@@ -42,7 +42,7 @@ Narragansett, RI\
 This code may be cited as supporting information for: EPA 2025.
 Technical Support Document for the Final Rule: Water Quality Standards
 to Protect Aquatic Life in the Delaware River. US Environmental
-Protection Agency, Office of Water. Washington, DC. 67 pp.
+Protection Agency, Office of Water. Washington, DC. 69 pp.
 <https://www.epa.gov/wqs-tech/water-quality-standards-delaware-river>
 
 ## References
