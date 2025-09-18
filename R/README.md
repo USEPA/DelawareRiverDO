@@ -110,3 +110,5 @@ This program creates bar graphs showing modeled HSI and biomass change at each s
 
 This program creates a PDF file that was modified with additional labels in Adobe Illustrator to make figure 7 in the TSD.
 
+### 7.04 Compare Seasonal Minimum and 10th Percentile.Rmd
+This program estimates the minimum DO, as percent saturation and as concentration, that would be expected in the Delaware River when the 10th percentile is at the criterion value of 66%.  The program also estimates for percent saturation the average 10th percentile value that will be expected if the 10th percentile is always attained, and the corresponding average value for the seasonal minimum percent saturation.  A graph from this program appears in the Techinical Support Document for the final rule.
