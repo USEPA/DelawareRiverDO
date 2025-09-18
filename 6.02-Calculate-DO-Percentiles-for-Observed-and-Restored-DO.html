@@ -11,7 +11,7 @@
 
 <meta name="author" content="J. Hagy" />
 
-<meta name="date" content="2023-12-09" />
+<meta name="date" content="2025-09-18" />
 
 <title>6.02 Calculate Observed and Restored DO Percentiles.Rmd</title>
 
@@ -353,7 +353,7 @@ display: none;
 <h1 class="title toc-ignore">6.02 Calculate Observed and Restored DO
 Percentiles.Rmd</h1>
 <h4 class="author">J. Hagy</h4>
-<h4 class="date">2023-12-09</h4>
+<h4 class="date">2025-09-18</h4>
 
 </div>
 
@@ -363,23 +363,23 @@ Percentiles.Rmd</h1>
 <pre class="r"><code># Load Observed DO at Chester and Penn&#39;s Landing
 # Here the data are the 2002-2022 data for July 1 to October 31 with 
 # all missing values imputed
-load(paste0(dataPath,&quot;5. DR_Chester_Summer_Complete.Rdata&quot;))
-load(paste0(dataPath,&quot;5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata&quot;))
+load(here(&quot;data&quot;,&quot;5. DR_Chester_Summer_Complete.Rdata&quot;))
+load(here(&quot;data&quot;,&quot;5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata&quot;))
 
 # Load Restored DO
-load(paste0(dataPath,&quot;6.0 Estimates of Restored DO.Rdata&quot;))
+load(here(&quot;data&quot;,&quot;6.0 Estimates of Restored DO.Rdata&quot;))
 
 # Combined data from Chester and Penn&#39;s Landing and rename variables
 observed &lt;- rbind(drc_summer %&gt;% mutate(Site=&quot;Chester&quot;),
             drpl_summer %&gt;% mutate(Site=&quot;Penn&#39;s Landing&quot;)) %&gt;% 
   mutate(type=&quot;Observed&quot;) %&gt;% 
-  select(Site,type,doy,year,do.mgL.mean,posat.mean) %&gt;% 
+  select(Site,type,date,year,do.mgL.mean,posat.mean) %&gt;% 
   rename(do.mgL=do.mgL.mean,posat=posat.mean)
 
 # Rename variables from restored WQ data
 restored &lt;- restoredWQ %&gt;% 
   mutate(type=&quot;Restored&quot;) %&gt;% 
-  select(Site,type,doy,year,do.mean,posat.mean) %&gt;% 
+  select(Site,type,date,year,do.mean,posat.mean) %&gt;% 
   rename(do.mgL=do.mean,posat=posat.mean)
 
 # Combined observed and restored data
@@ -390,7 +390,7 @@ df &lt;- rbind(observed,restored)</code></pre>
 <pre class="r"><code>#Create function to calculate percentiles
 calculatePercentiles &lt;- function(pct=NULL) {
 df %&gt;% 
-  filter(between(doy,182,304)) %&gt;% 
+  filter(between(month(date),7,10)) %&gt;% 
   group_by(type,Site,year) %&gt;%   
   summarize(do=quantile(do.mgL,probs=pct),
             posat=quantile(posat,probs=pct)) %&gt;% 
@@ -414,7 +414,7 @@ percentiles &lt;- do.call(&quot;rbind&quot;,lapply(pcts,&quot;calculatePercentil
 
 percentiles &lt;- percentiles %&gt;% mutate(year=as.numeric(year))
 
-save(percentiles,file=paste0(dataPath,&quot;6.02 DO and POSAT Percentiles.Rdata&quot;))</code></pre>
+save(percentiles,file=here(&quot;data&quot;,&quot;6.02 DO and POSAT Percentiles.Rdata&quot;))</code></pre>
 </div>
 
 
