@@ -1,0 +1,130 @@
+---
+title: "Evaluate Water Temperature Trends"
+author: "J Hagy"
+date: "2024-04-25"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(mgcv)
+library(gratia)
+library(here)
+
+```
+
+##Temperature Trends in the Delaware River
+Generalized Additive Models (GAMs) were fitted to the long term water tempreature time series from the Delaware River to evaluate if water temperature has been changing.
+
+### Load Data
+
+```{r}
+
+load(here("data","5.01 Delaware River at Penn Landing.Rdata"))
+load(here("data","5. Chester_1961-2023.Rdata"))
+
+df <- rbind(
+  drChester_ctdo %>% 
+    select(date,wt.mean) %>% 
+    mutate(site="Chester"),
+  drPenn_ctdo %>% 
+    select(date,wt.mean) %>% 
+    mutate(site="Penn Landing")
+) %>% 
+  mutate(
+    doy=yday(date),
+    cyear=year(date)+doy/366,
+    site=factor(site)
+  ) %>% 
+  filter(!is.na(wt.mean))
+
+```
+
+### Fit a GAM to Water Temperature Data
+The GAM explains 95% of the variability in water tempeature at the two sites in the fishery maintenance area of the Delaware River.  Water Temperature at Penn Landing is about 0.5 degrees lower than at Chester. Overall water temperature deceased at the two sites; however, water temperature trends varied by season and by different periods within the overall time series.
+
+```{r}
+fit <- gam(wt.mean~site+s(cyear)+s(doy,bs="cc")+ti(cyear,doy),data=df)
+summary(fit)
+
+draw(fit,rug=FALSE)
+appraise(fit)
+
+```
+
+## Predict Water Temperature in mid August in each year
+Trends in summer water temperatures are easiest to understand by predicting the water temperature in each year during mid summer, such as on August 15.  Mid summer water temperature decreased during the 1970s, reached a minimum in the late 1990s, and has increased steadily from the 1990s to 2022.  From 1995 to 2022, water temperature increased at an average rate of about 0.015 degrees per year or 0.15 degrees per decade. This is about 25% of the estimated trend in air temperature (0.06 degrees per year) during the past 30 years as estimated by The Partnership for the Delaware River (2022).
+
+```{r}
+
+predict.data <- expand.grid(year=seq(1965,2022),doy=227,
+                            site=c("Penn Landing","Chester")) %>% 
+  mutate(
+    date=as.Date(doy,origin=paste0(year-1,"-12-31")),
+    cyear=year(date)+doy/366,
+    site=factor(site)
+  )
+
+wt.predict <- predict(fit,predict.data,se.fit=TRUE)
+
+predict.data$wt.mean <- wt.predict$fit
+predict.data$wt.mean.se <- wt.predict$se.fit
+
+ggplot()+
+  geom_ribbon(data=predict.data,aes(x=date,ymin=wt.mean-wt.mean.se,
+                                  ymax=wt.mean+wt.mean.se,fill=site),alpha=0.2)+
+  geom_line(data=predict.data,aes(x=date,y=wt.mean,color=site))+
+  theme_classic()+
+  labs(x="Year",y="Predicted Water Temperature")+
+  ggtitle("Predicted Water Temperature on August 15")
+
+# What was the increase in August water temperature from 1995 to 2022?
+tmp <- predict.data %>% filter(between(year(date),1995,2022) & doy==227)
+trend <- lm(wt.mean~cyear+site,data=tmp)
+tmp$pred <- predict(trend,tmp,se.fit=FALSE)
+
+summary(trend)
+
+ggplot(tmp,aes(x=date,y=wt.mean,color=site))+
+  geom_line()+
+  geom_line(data=tmp,aes(x=date,y=pred,color=site),linetype=2)+
+  theme_classic()+
+  ggtitle("Trend in Water Temperature during 1995-2022")+
+  labs(x="Year",y="Predicted Water Temperature",
+       subtitle="Dotted line is Linear Trend")
+
+```
+
+## Predict Water Temperature on March 15
+Water temperature in mid March increased through the late 1980s, then decreased for the rest of the record.
+
+```{r}
+
+predict.data <- expand.grid(year=seq(1965,2022),doy=74,
+                            site=c("Penn Landing","Chester")) %>% 
+  mutate(
+    date=as.Date(doy,origin=paste0(year-1,"-12-31")),
+    cyear=year(date)+doy/366,
+    site=factor(site)
+  )
+
+wt.predict <- predict(fit,predict.data,se.fit=TRUE)
+
+predict.data$wt.mean <- wt.predict$fit
+predict.data$wt.mean.se <- wt.predict$se.fit
+
+ggplot()+
+  geom_ribbon(data=predict.data,aes(x=date,ymin=wt.mean-wt.mean.se,
+                                  ymax=wt.mean+wt.mean.se,fill=site),alpha=0.2)+
+  geom_line(data=predict.data,aes(x=date,y=wt.mean,color=site))+
+  theme_classic()+
+  labs(x="Year",y="Predicted Water Temperature")+
+  ggtitle("Predicted Water Temperature on March 15")
+
+
+```
+
