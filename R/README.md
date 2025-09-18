@@ -39,6 +39,9 @@ This program illustrates why the survival model included in Niklitschek and Seco
 
 This program generates Figure 3 in the TSD.  Statistical details from this program are included as Figure A5-1 in the TSD.
 
+### 3.0 Combine Fish Size Data.Rmd
+This program assembles the data on Atlantic Sturgeon weights by combining data from Park 2020 and data from Calvo 2010.
+
 ### 5. Assimilate Chester WQ Time Series Data.Rmd
 This program obtains the water quality time series data for Chester, PA from the USGS NWIS web page.  The data are plotted to faciliate evaluation of the data (eg. reasonableness), including ensuring that the data were read correctly and are in expected units. Linear interpolation is used to impute values where short periods of data may be missing.  The product is referred to as the "complete" time series because it does not contain any missing daily values, as required by the cohort model.  The program saves the resulting data as a .Rdata file. 
 
