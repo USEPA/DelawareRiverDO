@@ -3,14 +3,16 @@
 # required the input time series to exist as "ts_input"
 library(tidyverse)
 library(lubridate)
+library(marelac)
+library(wql)
 
 # Create a function to impute missing values for the data in one year.
 imputeByYear <- function(Year) {
   
   tmp <- ts_input %>%
-    mutate(year=year(date),doy=yday(date)) %>% 
+    mutate(year = year(date),doy=yday(date)) %>% 
     filter(year==Year) %>% 
-    filter(between(month(date),6,11)) %>% 
+    filter(between(month(date),6,11))
   
   # impute any missing values
   dt.out <- seq.Date(as.Date(paste0(Year,"-06-01")),
@@ -19,8 +21,7 @@ imputeByYear <- function(Year) {
   spCond.mean <- approx(tmp$date,tmp$spCond.mean,xout=dt.out) %>% .[[2]]
   wt.mean <- approx(tmp$doy,tmp$wt.mean,xout=dt.out) %>% .[[2]]
   do.mgL.mean <- approx(tmp$doy,tmp$do.mgL.mean,xout=dt.out) %>% .[[2]]
-  tmp <- cbind(dt.out,spCond.mean,wt.mean,do.mgL.mean) %>% 
-    data.frame() %>% 
+  tmp <- data.frame(date=dt.out,spCond.mean,wt.mean,do.mgL.mean) %>% 
     mutate(year=Year)
   
   # Calculate salinity 
