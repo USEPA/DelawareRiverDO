@@ -10,7 +10,7 @@ were used by the US EPA to develop the final rule Water Quality
 Standards to Protect Aquatic Life in the Delaware River (September
 2025). The code implements models and other analyses to quantify the
 effects of dissolved oxygen, salinity, and water temperature on juvenile
-Atlantic sturgeon in zones 3, 4, and upper 5 of the Delaware River.
+Atlantic sturgeon in zones 3, 4, and upper 5 of the mainstem Delaware River.
 
 The water quality criteria for dissolved oxygen that the EPA promulgated
 as part of rule were derived using existing bioenergetics and juvenile
@@ -21,10 +21,10 @@ Delaware River or are expected to occur in the Delaware River after
 additional pollutant load reductions are implemented (Zheng et al.
 2024). The EPA’s analysis quantifies a habitat suitability index (HSI)
 based on the response of juvenile Atlantic Sturgeon to salinity, water
-temperature, and dissolved oxygen and uses it to derive threshold values
+temperature, and dissolved oxygen and uses it to derive criteria
 for dissolved oxygen that are expected to support use of the designated
 zones of the river for propagation by Atlantic Sturgeon and other oxygen
-sensitive species. Additional technical information is available at
+sensitive species. Additional information is available at
 https://www.epa.gov/wqs-tech/water-quality-standards-delaware-river. 
 
 For questions or requests related to the code, users are encouraged to
@@ -75,11 +75,10 @@ Delaware River Basin Commission.
 
 ## EPA Disclaimer
 
-The United States Environmental Protection Agency (EPA) GitHub project
-code is provided on an "as is" basis and the user assumes responsibility
-for its use. EPA has relinquished control of the information and no
-longer has responsibility to protect the integrity , confidentiality, or
-availability of the information. Any reference to specific commercial
+The EPA GitHub project code is provided as is and the user assumes responsibility
+for its use. The EPA has relinquished control of this information and no
+longer has responsibility to protect its integrity, confidentiality, or
+availability. Any reference to specific commercial
 products, processes, or services by service mark, trademark,
 manufacturer, or otherwise, does not constitute or imply their
 endorsement, recommendation or favoring by EPA. The EPA seal and logo
