@@ -1,0 +1,64 @@
+---
+title: "3.0 Combine Fish Size Data"
+author: "J Hagy"
+date: "2025-09-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+
+```
+
+## Combine Fish Size Data
+This program combined fish size data obtained from Park 2020 with additional fish size data from Calvo 2010
+
+## Load data from Park 2020
+```{r}
+tmp <- read.csv(here("raw","2020 Park.csv"),skip=2)
+park2020 <- rbind(
+  tmp %>% 
+    mutate(date=as.Date(Original.Tag.Date,format="%m/%d/%Y"),
+           weight.g=Weight..kg.) %>%  # column incorrectly labelled as "kg"
+    select(date,weight.g),
+  tmp %>% 
+    mutate(date=as.Date(Recapture.Date,format="%m/%d/%Y"),
+           weight.g=Weight..kg..1) %>% # column incorrectly labelled as "kg" 
+    select(date,weight.g)
+) %>% 
+  mutate(
+    doy.as.date=as.Date(paste0("2019-",format(date,"%m-%d"))),
+    source="Park 2020",
+    year.capture=year(date))
+rm(tmp)
+```
+
+## Load data from Calvo 2010
+
+```{r}
+
+# Load data from Calvo et al 2010.
+calvo2010 <- read.csv(here("raw","2010_Calvo.csv")) %>% 
+  mutate(date=as.Date(Date,format="%m/%d/%Y"),
+         weight.g=Weight_g,
+         doy.as.date=as.Date(paste0("2019-",format(date,"%m-%d"))),
+         source="Calvo 2010",
+         year.capture=year(date)) %>% 
+    select(date,weight.g,doy.as.date,source,year.capture)
+
+```
+
+## Combine and save the data
+
+```{r}
+
+# Combine Park 2020 and Calvo 2010
+size.on.date <- rbind(park2020,calvo2010) %>% 
+  filter(weight.g<500)  # keep only YOY fish, defined as fish<500g
+
+save(size.on.date,file=here("data","3.0 size.on.date.Rdata"))
+
+```

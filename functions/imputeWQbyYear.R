@@ -19,8 +19,8 @@ imputeByYear <- function(Year) {
                   as.Date(paste0(Year,"-11-30")),
                   by="1 day")
   spCond.mean <- approx(tmp$date,tmp$spCond.mean,xout=dt.out) %>% .[[2]]
-  wt.mean <- approx(tmp$doy,tmp$wt.mean,xout=dt.out) %>% .[[2]]
-  do.mgL.mean <- approx(tmp$doy,tmp$do.mgL.mean,xout=dt.out) %>% .[[2]]
+  wt.mean <- approx(tmp$date,tmp$wt.mean,xout=dt.out) %>% .[[2]]
+  do.mgL.mean <- approx(tmp$date,tmp$do.mgL.mean,xout=dt.out) %>% .[[2]]
   tmp <- data.frame(date=dt.out,spCond.mean,wt.mean,do.mgL.mean) %>% 
     mutate(year=Year)
   
