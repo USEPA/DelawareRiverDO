@@ -1,0 +1,204 @@
+---
+title: "Evaluate correlation between Chester and Penn's Landing"
+author: "J Hagy"
+date: "2024-07-08"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(modelr)
+library(lmodel2)
+library(here)
+
+```
+
+During external review of the Technical Report, one reviewer noted that some of the gaps in the data are longer than 1 or 2 days and suggested that EPA consider using data from the other site to impute missing values, rather than just interpolating linearly. Commenters allso suggested that EPA consider this approach.  This program evaluates if this approach is feasible and if it could provide an improved approach to impute missing data from the daily time series.
+
+## Load data
+
+```{r}
+
+load(here("data","5. Chester_1961-2023.Rdata"))
+load(here("data","5.01 Delaware River at Penn Landing.Rdata"))
+
+```
+
+## How often are both stations missing at the same time?
+
+```{r}
+
+dates.template <- data.frame(date=seq(as.Date("2002-01-01"),
+                      as.Date("2022-12-31"),by=1))
+
+df.C <- drChester_ctdo %>% 
+  select(date,do.mgL.mean) %>%
+  left_join(dates.template,.,by="date") %>% 
+  rename(chester = do.mgL.mean)
+  
+df.P <- drPenn_ctdo %>% 
+  select(date,do.mgL.mean) %>%
+  left_join(dates.template,.,by="date") %>% 
+  rename(Penn = do.mgL.mean)
+
+df <- cbind(df.C,select(df.P,Penn)) %>% 
+  filter(between(yday(date),182,305))
+
+df$bothMissing <- is.na(df$chester) & is.na(df$Penn)
+
+df$onlyChester <- is.na(df$chester) & !is.na(df$Penn)
+df$onlyPenn <- is.na(df$Penn) & !is.na(df$chester)
+summary(df$bothMissing)
+
+```
+
+In the data, there were only 20 days when data from both sites were missing.  Of these, 6 days were in 2005, 1 was in 2007, and 13 were in 2010.  Data from 2010 were not included in the analysis because too much data was missing.
+
+```{r}
+summary(df$onlyChester)
+df %>% filter(onlyChester) %>% 
+  mutate(year=year(date)) %>% 
+  group_by(year) %>% 
+  summarize(n=n())
+```
+
+Missing data at Chester was concentrated early in the record, such as 2004, 2005, 2007, and again in 2020.
+
+```{r}
+summary(df$onlyPenn)
+df %>% filter(onlyPenn) %>% 
+  mutate(year=year(date)) %>% 
+  group_by(year) %>% 
+  summarize(n=n())
+```
+
+Data missing only at Penn's Landing was concentrated more later in the record, except for 2010, where the most missing values occurred.  Note that because of missing data, 2010 was not included in the analysis used to develop the rule.  Therefore, imputation of missing data in 2010 was not needed.   
+
+# Relationship between DO at Penn's Landing and Chester
+
+As suggested by the reviewer, if there is a strong relationship between observations and the data at the two sites, it might be possible to make a more accurate imputation using non-missing data from the other site.
+
+Here we look at predicting data for Chester using non-missing data from Penn's Landing.
+
+```{r}
+
+# fit a linear model to predict values at Chester from values at Penn's Landing
+fit <- lm(chester ~ Penn,data=df)
+summary(fit)
+fit$coefficients
+
+# compute predicted values from MA regression
+df$chester.mod <- predict(fit,df)
+df <- df %>% mutate(chester.res = chester - chester.mod)
+
+ggplot()+
+  geom_point(data=df,aes(x=Penn,y=chester),alpha=0.2)+
+  geom_abline(slope=fit$coefficients[2],intercept=fit$coefficients[1])+
+  theme_classic()
+
+ggplot(df,aes(x=chester,y=chester.res))+
+  geom_point()+
+  theme_classic()
+
+ggplot(df,aes(x=chester.res))+
+  geom_histogram()+
+  theme_classic()
+
+```
+
+The data at Chester can be predicted from the data at Penn's Landing with R^2^=0.62.  Most of the residuals are between +/- 1 mg/L. This is not an especially high correlation, but might still be preferred for imputing longer data gaps. For shorter data gaps, linear interpolation might be more accurate. For longer periods, however, it could be more accurate to use the functional relationship, which is computed here from major axis regression (i.e., model 2 regression, used to quantify a functional relationship when both variables are random variables (i.e., not fixed).   
+
+# What is the correlation between observations and the 1-day or 2-day lagged observation
+
+```{r}
+
+df$chester.lag1 <- lag(df$chester,1)
+df$chester.lag2 <- lag(df$chester,2)
+df$chester.lag3 <- lag(df$chester,3)
+df$chester.lag4 <- lag(df$chester,4)
+df$chester.lag5 <- lag(df$chester,5)
+df$chester.lag6 <- lag(df$chester,6)
+
+df$chester.lead1 <- lead(df$chester,1)
+df$chester.lead2 <- lead(df$chester,2)
+df$chester.lead3 <- lead(df$chester,3)
+df$chester.lead4 <- lead(df$chester,4)
+df$chester.lead5 <- lead(df$chester,5)
+df$chester.lead6 <- lead(df$chester,6)
+
+correlations <- c(
+cor(df$chester,df$chester.lag1,use="complete.obs"),
+cor(df$chester,df$chester.lag2,use="complete.obs"),
+cor(df$chester,df$chester.lag3,use="complete.obs"),
+cor(df$chester,df$chester.lag4,use="complete.obs"),
+cor(df$chester,df$chester.lag5,use="complete.obs"),
+cor(df$chester,df$chester.lag6,use="complete.obs")
+)
+correlations^2
+
+```
+
+The correlation between lagged data is better than the regression correlation for the first 4 days.  Correlations with leading data are identical. Therefore, it might be better to use predictions based on regression with Penn's Landing when the gap is longer than 2x4 days = 8 days.
+
+# How many days are in the typical "gap" at each site
+
+```{r}
+
+missingLength <- 0
+gaps <- NULL
+for (i in 1:2604) {
+  # if chester is missing
+  if (is.na(df$chester[i])) {
+    missingLength <- missingLength + 1
+  }
+  if (!is.na(df$chester[i]) & missingLength>0) {
+    gaps <- rbind(gaps,missingLength)
+    missingLength <- 0
+  }
+}
+
+data.frame(gaps=gaps) %>% group_by(gaps) %>% 
+  summarize(n=n())
+
+```
+
+Of the gaps at Chester, nearly 50% were of 1 or 2 days duration.  Only 4 gaps were longer than 5 days, but the longer gaps accounted for a similar number of days (i.e., because they were longer).
+
+# Calculate missing values using both linear interpolation and regression. 
+
+```{r}
+
+calcDaysMissing <- function(myYear) {
+  df.filt <- filter(df,year(date)==myYear)
+  # Calculate days since missing
+  if (is.na(df.filt$chester[1])) {
+    df$daysMissing[1] <- 1 
+  } else { df.filt$daysMissing[1] <- 0 }
+    
+  for (i in 2:nrow(df.filt)) {
+    if (is.na(df.filt$chester[i])) {
+      df.filt$daysMissing[i] <- df.filt$daysMissing[i-1]+1
+    } else {
+      df.filt$daysMissing[i] <- 0
+    }
+  }
+  return(df.filt$daysMissing)
+}
+
+# Calculate number of days since data was missing
+for (yr in seq(2002,2022)) {
+  df$daysMissing[year(df$date)==yr] <- calcDaysMissing(yr)
+}
+
+df %>% group_by(daysMissing) %>% 
+  summarize(n=n())
+
+```
+
+In all the data (365 x 2 x 21 = 15,330 days at 2 sites for 21 years), only 14 days could be predicted better using a regression than using linear interpolation.
+
+Based on this analysis, it can be concluded that imputation of missing values using linear interpolation was as good or better in nearly all cases.
