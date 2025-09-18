@@ -14,20 +14,20 @@ The code used the following R-packages.
 
 |Package | Version | Used for |
 | :--- | :---: | :---  |
-| knitr | 1.43 | Processing R-markdown    |
+| knitr | 1.50 | Processing R-markdown    |
 | tidyverse | 2.0.0 | Data processing and graphing   |
-| gt | 0.10.0  | Making tables    |
-| lubridate | 1.9.2  | Processing dates  |
-| wesanderson | 0.3.6  | Color palettes    |
-| viridis | 0.6.4  |  Color palettes   |
-| marelac | 2.1.10  | Gas solubility functions   |
-| wql | 1.0.0 | Calculating salinity from conductivity   |
-| qgam | 1.3.4  | Fitting quantile generalized additive models    |
-| mgcv | 1.9-0  | Fitting generalized additive models |
-| gratia |0.8.1  |Evaluating generalized additive models |
+| gt | 1.0.0  | Making tables    |
+| lubridate | 1.9.4  | Processing dates  |
+| wesanderson | 0.3.7  | Color palettes    |
+| viridis | 0.6.5  |  Color palettes   |
+| marelac | 2.1.11  | Gas solubility functions   |
+| wql | 1.0.3 | Calculating salinity from conductivity   |
+| qgam | 2.0.0  | Fitting quantile generalized additive models    |
+| mgcv | 1.9-1  | Fitting generalized additive models |
+| gratia |0.11.1  |Evaluating generalized additive models |
 | modelr | 0.1.11  |Evaluating generalized additive models |
-| EGRET | 3.0.9 | Obtaining water quality data from USGS data portal    |
-| lmodel2 | 1.7-3 | Fitting Model II regressions  |
+| EGRET | 3.0.11 | Obtaining water quality data from USGS data portal    |
+| lmodel2 | 1.7-4 | Fitting Model II regressions  |
 | here | 1.0.1 | Ensuring accurate paths to files |
 
 ## List of Programs (R Markdown)
