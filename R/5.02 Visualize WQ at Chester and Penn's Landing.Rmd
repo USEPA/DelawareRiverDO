@@ -5,6 +5,8 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     df_print: paged
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -16,16 +18,15 @@ library(marelac)
 library(wql)
 library(wesanderson)
 library(viridis)
+library(here)
+library(patchwork)
+library(qacBase)
 
 no_grid <- theme(panel.grid=element_blank())
 
-source("functions/Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R")
+source(here("functions","Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R"))
 
 pal <- wes_palette("Zissou1",5,type="discrete")
-
-dataPath <- "data/"
-figurePath <- "figures/"
-outputPath <- "outputs/"
 
 ```
 
@@ -33,8 +34,8 @@ outputPath <- "outputs/"
 
 ```{r load data}
 
-load(paste0(dataPath,"5. DR_Chester_Summer_Complete.Rdata"))
-load(paste0(dataPath,"5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+load(here("data","5. DR_Chester_Summer_Complete.Rdata"))
+load(here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
 
 df <- rbind(
   drc_summer %>% mutate(site="Chester"),
@@ -42,7 +43,8 @@ df <- rbind(
 )
 
 df <- df %>% 
-  select(site,doy,year,wt.mean,salinity.mean,posat.mean) %>% 
+  filter(complete.cases(.)) %>% 
+  select(site,date,doy,year,wt.mean,salinity.mean,posat.mean) %>% 
   mutate(do.mgl=posat.mean*gas_O2sat(S=salinity.mean,t=wt.mean)/100) %>% 
   pivot_longer(cols=all_of(c("wt.mean","salinity.mean","posat.mean","do.mgl")),
                names_to = "param",
@@ -51,36 +53,51 @@ df <- df %>%
 
 # Create a date variable and re-order the parameter factor levels
 df <- df %>% 
-  mutate(date=as.Date(doy,origin=as.Date("2018-12-31")),
-         param=factor(param,levels=c("salinity.mean","wt.mean","posat.mean","do.mgl"),
+  mutate(doy.as.date = as.Date(paste0(2004,format(date,format="-%m-%d")))) %>% 
+  mutate(param=factor(param,levels=c("salinity.mean","wt.mean","posat.mean","do.mgl"),
                       labels=c("Salinity","Water Temperature",
                                "Percent Oxygen Saturation","Dissolved Oxygen"))
-  )
+         )
 
 # Calculate the median by day of year
-df.med <- df %>% group_by(site,param,doy) %>% 
+df.med <- df %>% group_by(site,param,doy.as.date) %>% 
   summarize(med = median(value)) %>% 
-  mutate(date=as.Date(doy,origin=as.Date("2018-12-31")))
-
+  ungroup()
+  
 ```
 
 ## Make a graph of seasonal WQ distribution
 
 ```{r Graph Seasonal WQ Distribution, echo=TRUE}
 
+graphClimatology <- function(myParam,ylabel,xInterval="1 month") {
+
+df <- filter(df,param==myParam)
+df.med <- filter(df.med,param==myParam)
+
 plt <- ggplot()+
-  geom_point(data=df,aes(x=date,y=value),shape=1,alpha=0.2)+
-  geom_line(data=df.med,aes(x=date,y=med),color="red")+
-  facet_grid(param~fct_rev(site),scales="free_y")+
-  scale_x_date(date_breaks="1 month",date_labels = "%m/%d")+
-  geom_vline(xintercept = c(as.Date("2019-07-01"),as.Date("2019-10-31")),linetype=2)+
-  no_grid
-plt
+  geom_point(data=df,aes(x=doy.as.date,y=value),shape=1,alpha=0.2)+
+  geom_line(data=df.med,aes(x=doy.as.date,y=med),color="red")+
+  facet_wrap(~fct_rev(site))+
+  scale_x_date(date_breaks=xInterval,date_labels = "%m/%d")+
+  geom_vline(xintercept = c(as.Date("2004-07-01"),as.Date("2004-10-31")),linetype=2)+
+  no_grid+
+  labs(x="",y=ylabel)
+return(plt)
+}
+
+plt.sal <- graphClimatology("Salinity","Salinity (ppt)")
+plt.wt <- graphClimatology("Water Temperature","Water Temperature (°C)")
+plt.posat <- graphClimatology("Percent Oxygen Saturation","Percent Oxygen Saturation")
+plt.do <- graphClimatology("Dissolved Oxygen","Dissolved Oxygen (mg/L)")
+
+# Plot an 8-panel figure
+plt.sal / plt.wt / plt.posat / plt.do
 
 # This creates figure 4 in the ORD Report, but is not used in the TSD
-pdf(file=paste0(figurePath,"5.02 Seasonal WQ Distribution.pdf"),
+pdf(file=here("figures","5.02 Seasonal WQ Distribution.pdf"),
     useDingbats = FALSE,width=6,height=8,paper="letter")
-  plt
+  plt.sal / plt.wt / plt.posat / plt.do
 dev.off()
 ```
 
@@ -88,17 +105,7 @@ dev.off()
 
 ```{r Summarize Statistics, echo=TRUE}
 
-parms <- unique(df$param)
-
-df %>% 
-  filter(site=="Chester") %>% 
-  filter(param=="Percent Oxygen Saturation") %>%  
-  summary()
-
-df %>% 
-  filter(site=="Penn's Landing") %>% 
-  filter(param=="Percent Oxygen Saturation") %>%  
-  summary()
+qstats(df,value,site, param, stats = c("min","median","mean","max","sd","n"))
 
 ```
 
@@ -131,14 +138,14 @@ plt <- ggplot()+
 plt
 
 # This creates figure 5 in the TSD
-pdf(file=paste0(figurePath,"5.02 Filled contours with observed WQ.pdf"),
+pdf(file=here("figures","5.02 Filled contours with observed WQ.pdf"),
     height=5,width=5,paper="letter")
   plt
 dev.off()
 
 ```
 
-# Make plots similar to above for CERF talk
+# Make plots similar to above for presentation purposes
 This graph is very similar to the graph created above, but it is formatted to look better in a powerpoint presentation
 
 ```{r Growth Contour for CERF, eval=FALSE, include=FALSE}
@@ -169,7 +176,7 @@ plt.noPoints <- ggplot() +
         strip.text=element_text(size=14))
 plt.noPoints
 
-pdf(file=paste0(figurePath,"5.02 Filled growth contours for CERF talk.pdf"),height=5,width=6,paper="letter")
+pdf(file=here("figures","5.02 Filled growth contours for CERF talk.pdf"),height=5,width=6,paper="letter")
   plt.noPoints
 dev.off()
 
@@ -191,7 +198,7 @@ plt <- ggplot()+
         strip.text=element_text(size=14))
 plt
 
-pdf(file=paste0(figurePath,"5.02 Filled contours with observed WQ for CERF talk.pdf"),
+pdf(file=here("figures","5.02 Filled contours with observed WQ for CERF talk.pdf"),
     height=5,width=6,paper="letter")
   plt
 dev.off()
@@ -203,8 +210,8 @@ dev.off()
 
 ```{r}
 
-load(paste0(dataPath,"5.01 Delaware River at Penn Landing.Rdata"))
-load(paste0(dataPath,"5. Chester_1961-2023.Rdata"))
+load(here("data","5.01 Delaware River at Penn Landing.Rdata"))
+load(here("data","5. Chester_1961-2023.Rdata"))
 
 # Combine data frames and eliminate rows with missing values
 df <- rbind(
@@ -233,7 +240,8 @@ df <- df %>%
 # Transpose data
 df <- df %>% 
   mutate(year=year(date)) %>% 
-  select(site,doy,year,wt.mean,salinity.mean,posat.mean) %>% 
+  mutate(doy.as.date = as.Date(paste0(2004,format(date,format="-%m-%d")))) %>% 
+  select(site,date,doy.as.date,year,wt.mean,salinity.mean,posat.mean) %>% 
   mutate(do.mgl=posat.mean*gas_O2sat(S=salinity.mean,t=wt.mean)/100) %>% 
   pivot_longer(cols=all_of(c("wt.mean","salinity.mean","posat.mean","do.mgl")),
                names_to = "param",
@@ -242,33 +250,30 @@ df <- df %>%
 
 # Create a date variable and re-order the parameter factor levels
 df <- df %>% 
-  mutate(date=as.Date(doy,origin=as.Date("2018-12-31")),
-         param=factor(param,levels=c("salinity.mean","wt.mean","posat.mean","do.mgl"),
+  mutate(param=factor(param,levels=c("salinity.mean","wt.mean","posat.mean","do.mgl"),
                       labels=c("Salinity","Water Temperature",
                                "Percent Oxygen Saturation","Dissolved Oxygen"))
   )
 
 # Calculate the median by day of year
-df.med <- df %>% group_by(site,param,doy) %>% 
-  summarize(med = median(value)) %>% 
-  mutate(date=as.Date(doy,origin=as.Date("2018-12-31")))
+df.med <- df %>% group_by(site,param,doy.as.date) %>% 
+  summarize(med = median(value)) 
 
-plt <- ggplot()+
-  geom_point(data=df,aes(x=date,y=value),shape=1,alpha=0.2)+
-  geom_line(data=df.med,aes(x=date,y=med),color="red")+
-  facet_grid(param~site,scales="free_y")+
-  scale_x_date(date_breaks="2 months",date_labels = "%m/%d")+
-  geom_vline(xintercept = c(as.Date("2019-03-01"),
-                            as.Date("2019-07-01"),
-                            as.Date("2019-10-31")),linetype=2)+
-  no_grid
-plt
+# Make climatology graphs
+plt.sal <- graphClimatology("Salinity","Salinity (ppt)",xInterval="2 months")
+plt.wt <- graphClimatology("Water Temperature","Water Temperature (°C)",xInterval="2 months")
+plt.posat <- graphClimatology("Percent Oxygen Saturation","Percent Oxygen Saturation",xInterval="2 months")
+plt.do <- graphClimatology("Dissolved Oxygen","Dissolved Oxygen (mg/L)",xInterval="2 months")
+
+# Plot an 8-panel figure
+plt.sal / plt.wt / plt.posat / plt.do
 
 # This creates Figure 2 in the TSD
-pdf(file=paste0(figurePath,"5.02 Full Year WQ Distribution.pdf"),
+pdf(file=here("figures","5.02 Full Year WQ Distribution.pdf"),
       useDingbats = FALSE,width=6,height=8,paper="letter")
-  plt
+  plt.sal / plt.wt / plt.posat / plt.do
 dev.off()
+
 ```
 
 # Calculate distribution statistics by Season
@@ -276,32 +281,51 @@ dev.off()
 ```{r}
 
 df <- df %>% mutate(
-  season=cut(date,breaks=c(as.Date("2018-12-31"),as.Date("2019-03-01"),
-                            as.Date("2019-07-01"),as.Date("2019-10-31"),
-                            as.Date("2020-01-02")),
-             labels=c("Overwinter","Spawning","Growth","Overwinter"))
+  season=cut(doy.as.date,
+  breaks=c(as.Date("2003-12-31"),as.Date("2004-03-01"),
+    as.Date("2004-07-01"),as.Date("2004-11-01"),
+    as.Date("2005-01-02")),
+  labels=c("Overwinter","Spawning","Growth","Overwinter"))
 )
 
 # Calculate seasonal descriptive statistics
 df.summary <- df %>% 
   filter(!is.na(value)) %>% 
-  filter(year>2010) %>% 
-  group_by(param,season) %>% 
+  filter(date >= as.Date("2011-11-01")) %>% 
+  group_by(site,param,season) %>% 
   summarize(min=min(value),
             p.10=quantile(value,probs=0.10),
             p.25=quantile(value,probs=0.25),
             med=median(value),mean=mean(value),
             p.75=quantile(value,probs=0.75),
             p.90=quantile(value,probs=0.90),
-            max=max(value))
+            max=max(value),
+            n=n())
 df.summary
 
-write.csv(df.summary,file=paste0(outputPath,"5.02 seasonal WQ stats.csv"))
+# Calculate seasonal stats on the median seasonal climatology
+df.med <- df.med %>% 
+
+stats_seasonal_climatology <- df.med %>% 
+  mutate(season=cut(doy.as.date,
+      breaks=c(as.Date("2003-12-31"),as.Date("2004-03-01"),
+          as.Date("2004-07-01"),as.Date("2004-11-01"),
+          as.Date("2005-01-02")),
+      labels=c("Overwinter","Spawning","Growth","Overwinter"))
+  ) %>% 
+group_by(site,season,param) %>% 
+  summarize(
+  p.90 = quantile(med,probs=0.9),
+  mean = mean(med)
+  )
+stats_seasonal_climatology
+
+write.csv(df.summary,file=here("outputs","5.02 seasonal WQ stats.csv"))
+write.csv(stats_seasonal_climatology,file=here("outputs","5.02 seasonal stats on median climatology.csv"))
 
 # Calculate seasonal descriptive statistics for just 2012-2022, 
-# per request of H. Lesch
 df.summary <- df %>% 
-  filter(year>2011) %>% 
+  filter(year>=2012) %>% 
   filter(!is.na(value)) %>% 
   group_by(param,site,season) %>% 
   summarize(min=min(value),p.25=quantile(value,probs=0.25),
@@ -309,6 +333,6 @@ df.summary <- df %>%
             p.75=quantile(value,probs=0.75),max=max(value))
 
 
-write.csv(df.summary,file=paste0(outputPath,"5.02 seasonal WQ stats.2012-2022.csv"))
+write.csv(df.summary,file=here("outputs","5.02 seasonal WQ stats.2012-2022.csv"))
 
 ```

@@ -15,6 +15,7 @@ library(marelac)
 library(viridis)
 library(wesanderson)
 library(knitr)
+librart(here)
 
 basic_theme <- theme_classic()+
   theme(axis.title = element_text(size=14),
@@ -25,7 +26,7 @@ pal <- wes_palette("Zissou1",5,type="discrete")
 # TSD refers to "Technical Support Document" which was produced to support the proposed
 # rule for dissolved oxygen criteria in zones 3, 4 and upper 5 of the Delaware River. 
 
-figurePath <- "figures/"
+figurePath <- "figures"
 
 ```
 
@@ -175,7 +176,7 @@ summary(fit.mortality)
 # save the linear model object for later use in predicting mortality based on
 # posat and water temperature. This is not saved after initial creation of the
 # model to ensure integrity of results.
-#save(fit.mortality,file="data/2.2 fit.mortality.v2.Rdata")
+#save(fit.mortality,file=here("data","2.2 fit.mortality.v2.Rdata")
 
 # predict instantaneous mortality rate for an example value using the log-linear model
 predict(fit.mortality,data.frame(posat=68,t=28)) %>% exp()-0.001
@@ -201,7 +202,7 @@ plt <- ggplot() +
 plt
 
 # This figure appears as Figure 3 in the TSD.
-pdf(file=paste0(figurePath,"2.2 Mortality rate vs POSAT and WT.pdf"),width=5,height=5, paper="letter")
+pdf(file=here("figures","2.2 Mortality rate vs POSAT and WT.pdf"),width=5,height=5, paper="letter")
   plt
 dev.off()
 ```
@@ -241,7 +242,7 @@ plt <- ggplot()+
   annotate("text",x=1.85,y=1.5,label="2.54", size=3.5)
 plt
 
-pdf(file=paste0(figurePath,"2.2 Confidence intervals for predicted Zmin.pdf"), width=6, height=4, paper="letter")
+pdf(file=here("figures","2.2 Confidence intervals for predicted Zmin.pdf"), width=6, height=4, paper="letter")
   plt
 dev.off()
 

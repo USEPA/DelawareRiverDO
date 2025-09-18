@@ -1,0 +1,25 @@
+"","site","season","param","p.90","mean"
+"1","Chester","Overwinter","Salinity",0.391576353465588,0.27176681670849
+"2","Chester","Overwinter","Water Temperature",11.915,5.68791666666667
+"3","Chester","Overwinter","Percent Oxygen Saturation",93.7133090787184,88.5661119901955
+"4","Chester","Overwinter","Dissolved Oxygen",12.805,11.1979166666667
+"5","Chester","Spawning","Salinity",0.273552234327656,0.186869786547457
+"6","Chester","Spawning","Water Temperature",23.475,14.9717213114754
+"7","Chester","Spawning","Percent Oxygen Saturation",94.8572962450773,85.0911755331381
+"8","Chester","Spawning","Dissolved Oxygen",12,8.91598360655738
+"9","Chester","Growth","Salinity",0.228466704380648,0.176779526264098
+"10","Chester","Growth","Water Temperature",27.78,23.8817073170732
+"11","Chester","Growth","Percent Oxygen Saturation",76.0190570040462,70.8145282316302
+"12","Chester","Growth","Dissolved Oxygen",7.2,6.02926829268293
+"13","Penn Landing","Overwinter","Salinity",0.303030765218267,0.198219756297646
+"14","Penn Landing","Overwinter","Water Temperature",10.92,5.0825
+"15","Penn Landing","Overwinter","Percent Oxygen Saturation",99.350906128514,93.8727944238776
+"16","Penn Landing","Overwinter","Dissolved Oxygen",13.605,12.0745833333333
+"17","Penn Landing","Spawning","Salinity",0.188798556223737,0.139139988446186
+"18","Penn Landing","Spawning","Water Temperature",23.13,14.5717213114754
+"19","Penn Landing","Spawning","Percent Oxygen Saturation",99.7808056374685,86.9842238550845
+"20","Penn Landing","Spawning","Dissolved Oxygen",12.3,9.1594262295082
+"21","Penn Landing","Growth","Salinity",0.147937142592479,0.126870395436491
+"22","Penn Landing","Growth","Water Temperature",27.2,23.4524390243902
+"23","Penn Landing","Growth","Percent Oxygen Saturation",75.1347596859838,67.0884018171291
+"24","Penn Landing","Growth","Dissolved Oxygen",7.28,5.73414634146341

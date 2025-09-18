@@ -1,0 +1,25 @@
+---
+title: "1. Setup"
+author: "J Hagy"
+date: "2023-12-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Check if packages are installed, and if not, install them
+
+```{r}
+
+packages <- c("knitr","tidyverse","gt","lubridate","wesanderson",
+              "viridis","marelac","wql","qgam","mgcv","gratia",
+              "modelr","EGRET","lmodel2","here")
+
+df <- packages %in% installed.packages()
+
+print("The following required packages are not installed and should be installed using install.packages():\n")
+print(packages[!df])
+
+```

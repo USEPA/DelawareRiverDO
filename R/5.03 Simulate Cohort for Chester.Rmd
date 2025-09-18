@@ -15,8 +15,8 @@ library(viridis)
 
 # Load functions implementing bioenergetics model
 
-source("functions/Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R")
-source("functions/get_mortality.R")
+source(here("functions","Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R"))
+source(here("functions","get_mortality.R"))
 
 basic_theme <- theme_classic() +
   theme(axis.text=element_text(size=14),
@@ -27,10 +27,6 @@ nogrid <- theme(panel.grid=element_blank())
 
 pal <- wes_palette("Zissou1",5,type="discrete")
 
-dataPath <- "data/"
-figurePath <- "figures/"
-rawPath <- "raw/"
-
 ```
 
 # Cohort Simulation at Chester
@@ -40,21 +36,24 @@ This code follows the cohort modeling concept of Niklitschek and Secor (2009) to
 ```{r Simulate Cohort}
 
 # Load the summer water quality data for Chester
-load(paste0(dataPath,"5. DR_Chester_Summer_Complete.Rdata"))
+load(here("data","5. DR_Chester_Summer_Complete.Rdata"))
 
 # Prepare water quality matrices for fish model for use in 
 # simulations
 posat.mean <- drc_summer %>%
-  select(year,doy,posat.mean) %>% 
+  mutate(doy = format(date,"%m%d")) %>% 
+  select(year,doy,posat.mean) %>%
   pivot_wider(names_from=doy,names_prefix="day",values_from = posat.mean) %>% 
   as.matrix()
 
 salinity.mean <- drc_summer %>%
+  mutate(doy = format(date,"%m%d")) %>% 
   select(year,doy,salinity.mean) %>% 
   pivot_wider(names_from=doy,names_prefix="day",values_from = salinity.mean) %>% 
   as.matrix()
 
 wt.mean <- drc_summer %>%
+  mutate(doy = format(date,"%m%d")) %>% 
   select(year,doy,wt.mean) %>% 
   pivot_wider(names_from=doy,names_prefix="day",values_from = wt.mean) %>% 
   as.matrix()
@@ -96,7 +95,7 @@ This code processes the simulation model results from the previous code chunk so
 ```{r Combine Simulation Results, echo=FALSE}
 
 transformArray <- function(inArray,vname) {
-  doy <- seq(182,335)
+  doy <- seq.Date(from=as.Date("2002-07-01"),to=as.Date("2002-12-01"),by="1 day") %>% format(.,format="-%m-%d")
   rownames(inArray) <- paste0("Y",seq(2002,2022))
   sim <- t(inArray) %>% 
     as.data.frame() %>% 
@@ -110,7 +109,8 @@ sim.abund <- transformArray(abundance,"abundance")
 sim.G <- transformArray(growth,"growth")
 sim.Z <- transformArray(mortality,"mortality")
 
-sim.Chester.Zmin <- cbind(sim.abund,weight=sim.wt$weight,growth=sim.G$growth,mortality=sim.Z$mortality)
+sim.Chester.Zmin <- cbind(sim.abund,weight=sim.wt$weight,growth=sim.G$growth,mortality=sim.Z$mortality) %>% 
+  mutate(date = as.Date(paste0(year,doy)))
 
 # Save the cohort simulation data
 #save(sim.Chester.Zmin,

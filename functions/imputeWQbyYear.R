@@ -10,14 +10,16 @@ imputeByYear <- function(Year) {
   tmp <- ts_input %>%
     mutate(year=year(date),doy=yday(date)) %>% 
     filter(year==Year) %>% 
-    filter(between(doy,152,334))
+    filter(between(month(date),6,11)) %>% 
   
   # impute any missing values
-  doy <- seq(152,334,by=1)
-  spCond.mean <- approx(tmp$doy,tmp$spCond.mean,xout=doy) %>% .[[2]]
-  wt.mean <- approx(tmp$doy,tmp$wt.mean,xout=doy) %>% .[[2]]
-  do.mgL.mean <- approx(tmp$doy,tmp$do.mgL.mean,xout=doy) %>% .[[2]]
-  tmp <- cbind(doy,spCond.mean,wt.mean,do.mgL.mean) %>% 
+  dt.out <- seq.Date(as.Date(paste0(Year,"-06-01")),
+                  as.Date(paste0(Year,"-11-30")),
+                  by="1 day")
+  spCond.mean <- approx(tmp$date,tmp$spCond.mean,xout=dt.out) %>% .[[2]]
+  wt.mean <- approx(tmp$doy,tmp$wt.mean,xout=dt.out) %>% .[[2]]
+  do.mgL.mean <- approx(tmp$doy,tmp$do.mgL.mean,xout=dt.out) %>% .[[2]]
+  tmp <- cbind(dt.out,spCond.mean,wt.mean,do.mgL.mean) %>% 
     data.frame() %>% 
     mutate(year=Year)
   

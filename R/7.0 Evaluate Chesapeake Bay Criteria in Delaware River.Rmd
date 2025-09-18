@@ -1,0 +1,281 @@
+---
+title: "Compare CB Criteria with Delaware DO Criteria"
+author: "J Hagy"
+date: "2025-09-12"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(zoo)
+library(janitor)
+
+```
+
+In 2003, the Chesapeake Bay Program office released regional criteria guidance, providing the EPA's recommendations to Chesapeake Bay states for use in establishing their water quality standards for Chesapeake Bay waters, including criteria for dissolved oxygen.  The criteria address seasonally- and spatially-defined designated uses that bear similarity to the specified zones of the Delaware River. These include the "Migratory fish spawning and nursery use" zone, which applies from February 1 through May 31 in and provides for survival and growth of larval and juvenile tidal-fresh residence fish, including protection of threatened and endangered species.  These criteria include a 7-day mean criterion of 6 mg/L and an instantaneous minimum of 5 mg/L. The listed species include Shortnose and Atlantic Sturgeon. 
+
+The criteria guidance also specifies an "Open-water fish and shellfish use", which applies throughout the year in waters throughout the Bay that are not below a pycnocline dividing the water column into two distinct layers. DO criteria are included for the 30-day mean, 7-day mean, and instantaneous minimum, addressing chronic and acute impacts on fish and shellfish, including endangered species (i.e., sturgeons).  For low salinity waters, the 30-day mean criterion is 5.5 mg/L.  For the 7-day mean, the criterion is 4 mg/L across all salinity zones.  For the instantaneous minimum, the criterion is 3.2 mg/L, except for when the water temperature is greater than 29 °C, when the instantaneous minimum is 4.3 mg/L, reflecting the increased sensitivity of shornose sturgeon at high temperature.  The 30-day mean criterion for Chesapeake Bay is assessed against a 10% cumulative frequency distribution curve that is symmetric in space and time.  In this analysis, the assessment was simplified to consider only temporal exceedance, wherein a year attains the 30-day mean criterion if less than 10% of the assessed days exceeded the criteria magnitude.
+
+For dissolved oxygen in the Juvenile Development season that EPA defined for the specified zones of the Delaware River (i.e, July 1 through October 31), the EPA's DO criteria include a percent oxygen saturation criterion of 66% that may be exceeded on no more than 12 days per year, which is about 10% of the time.  The EPA's criteria also include a value of 74%, which can be exceeded in no more than 61 days, or about 50% of the time.  
+
+Although a direct comparison of these criteria is challenging because of the different ways that the requirements are expressed, it is possible to compare them by considering how many years oxygen levels in the Delaware River would attain both the Chesapeake Bay criteria and the EPA's Delaware River criteria under both existing and restored conditions.
+
+For the DO levels observed during 2002-2022 (20 years) at Penn's Landing and Chester during the Juvenile Development season, the Chesapeake Bay 30-day mean criterion of 5.5 mg/L was not attained in 19 years at Penn's Landing and 16 years at Chester. The 7-day mean criterion was not attained in 6 years at Penn's Landing and 2 years at Chester, while the instantaneous minimum was no attained in only 2 years at Penn's Landing and 1 year at Chester.
+
+For the estimated restored DO conditions, the Chesapeake Bay criterion for the 30-day mean would still be not attained in 8 years at Penn's Landing. The 30-day mean would be expected to be attained completely at Chester and all other criteria would be attained completely at both sites.
+
+Non-attainment of the EPA's criteria under observed conditions is similar to the chesapeake Bay criteria, with non-attainment in all 20 years at Penn's Landing at 17 of 20 years at Chester (compared to 19 and 16 for the 30-day mean criterion).  Similarly, under the restored DO scenario, the EPA's criteria would also not be attained in 8 years at Penn's Landing, but - like the Chesapeake Bay criteria - would be attained in all years at Chester.
+
+The frequency of non-attainment trended downward for both the Chesapeake Bay and Delaware DO criteria, wherein DO levels were slightly higher after 2010 than before.  In some years included as not-attaining, the number of days in excess of the allowable exceedance frequency was relatively small.  For the Chesapeake Bay criteria, the percentage of days with 30-day rolling means that fell below 5.5 mg/L likewise decreased.   
+
+Based on this analysis, it can be concluded that the Chesapeake Bay DO criteria are likely neither more stringent nor less stringent than the Delaware River DO criteria, with the caveat that this analysis accounts for the specified exceedance frequency only for the Delaware River DO criteria.  The Chesapeake Bay DO criteria clearly articulate the criteria duration, but the allowable exceedance frequency involves a relatively complex analysis encompassing joint consideration of the allowable spatial and temporal exceedance. This analysis is not  replicated here in application to the data from the Delaware River.
+
+Below are graphs and data supporting this analysis and discussion.
+
+## Load Observed and Restored DO Data
+
+```{r}
+load(here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+load(here("data","5. DR_Chester_Summer_Complete.Rdata"))
+load(here("data","6.0 Estimates of Restored DO.Rdata"))
+```
+
+# Combine Observed and Restored
+
+```{r}
+
+obs <- rbind(
+  drpl_summer %>% mutate(site="Penn's Landing"),
+  drc_summer %>% mutate(site="Chester")
+) %>% 
+  mutate(date = as.Date(doy,origin=paste0(year-1,"-12-31")),
+         type="Observed") %>% 
+  select(type,site,date,year,do.mgL.mean,posat.mean,wt.mean)
+
+res <- restoredWQ %>% 
+  mutate(type="Restored") %>%
+  rename(do.mgL.mean = do.mean,site=Site) %>% 
+  select(type,date,site,year,do.mgL.mean,posat.mean,wt.mean)
+
+all.data <- rbind(obs,res) %>% filter(between(month(date),7,10))
+all.data %>% group_by(type,site,year) %>% summarize(n=n())
+
+rm(obs,res)
+
+```
+
+## Calculate rolling means
+
+```{r}
+
+mean.rm <- function(inData,Period,Param,Year,Site,Type) {
+  tmp <- inData %>% 
+      filter(year==Year,site==Site,type==Type)
+  tmp$var <- tmp[,Param]
+  mn <- data.frame(
+    rm.var=rollmean(tmp$var,Period,na.pad=TRUE,align="right"),
+    rm.wt=rollmean(tmp$wt.mean,Period,na.pad=TRUE,align="right")) %>% 
+    mutate(year=Year,param=Param,period=Period,type=Type,site=Site)
+  mn$date <- tmp$date
+  mn <- mn[!is.na(mn$rm.var),]
+  return(mn)  
+}
+
+#df <- mean.rm(all.data,30,"do.mgL.mean",2019,"Chester","Observed")
+
+means <- NULL
+for (i in seq(2002,2022)) {
+
+mn <- rbind(
+  mean.rm(all.data,30,"do.mgL.mean",i,"Chester","Observed"),
+  mean.rm(all.data,30,"do.mgL.mean",i,"Penn's Landing","Observed"),
+  mean.rm(all.data,30,"do.mgL.mean",i,"Chester","Restored"),
+  mean.rm(all.data,30,"do.mgL.mean",i,"Penn's Landing","Restored"),
+  mean.rm(all.data,7,"do.mgL.mean",i,"Chester","Observed"),
+  mean.rm(all.data,7,"do.mgL.mean",i,"Penn's Landing","Observed"),
+  mean.rm(all.data,7,"do.mgL.mean",i,"Chester","Restored"),
+  mean.rm(all.data,7,"do.mgL.mean",i,"Penn's Landing","Restored"),
+  mean.rm(all.data,1,"do.mgL.mean",i,"Chester","Observed"),
+  mean.rm(all.data,1,"do.mgL.mean",i,"Penn's Landing","Observed"),
+  mean.rm(all.data,1,"do.mgL.mean",i,"Chester","Restored"),
+  mean.rm(all.data,1,"do.mgL.mean",i,"Penn's Landing","Restored")
+)
+means=rbind(means,mn)
+}
+
+# How many rolling means are there
+means %>% 
+  group_by(type,period,year,site) %>% 
+  summarize(n=n()) 
+
+```
+
+# Graph the rolling means
+
+```{r echo=FALSE}
+
+means <- means %>% 
+  mutate(
+    year=factor(year),
+    site = factor(site,levels=c("Penn's Landing","Chester")),
+    doy.as.Date = as.Date(paste0(2019,"-",month(date),"-",day(date))), 
+    temp.class = ifelse(rm.wt>29,">29","<29")
+  )
+
+# Graph 30-days DO Means
+plt.30 <- means %>% 
+  filter(period==30) %>% 
+  ggplot(.,aes(x=doy.as.Date,y=rm.var,group=year))+
+  facet_grid(site~type)+
+  geom_line()+
+  scale_y_continuous(breaks=c(4,5,5.5,6,7,8,9))+
+  theme(panel.grid=element_blank())+
+  geom_hline(yintercept=5.5,linetype=2)+
+  scale_x_date(limits=c(as.Date("2019-07-01"),as.Date("2019-10-31")),date_breaks="1 month",date_labels = "%m/%d")+
+  labs(x="Date",y="Trailing 30-day Mean DO (mg/L)")+
+  ggtitle("30-Day Mean Dissolved Oxygen",subtitle="Criteria Minimum = 5.5 mg/L")+
+  theme(legend.position="none")
+plt.30
+
+# Graph 7-day DO means
+plt.7 <- means %>% 
+  filter(period==7) %>% 
+  ggplot(.,aes(x=doy.as.Date,y=rm.var,group=year))+
+  facet_grid(site~type)+
+  geom_line()+
+  scale_y_continuous(breaks=c(4,5,7,9))+
+  theme(panel.grid=element_blank())+
+  geom_hline(yintercept=4,linetype=2)+
+  scale_x_date(limits=c(as.Date("2019-07-01"),as.Date("2019-10-31")),date_breaks="1 month",date_labels = "%m/%d")+
+  labs(x="Date",y="Trailing 7-day Mean DO (mg/L)")+
+  ggtitle("7-Day Mean Dissolved Oxygen",subtitle="Criteria Minimum = 4 mg/L")+
+  theme(legend.position="none")
+plt.7
+
+# Graph 7-day DO means
+plt.1 <- means %>% 
+  filter(period==1) %>%
+  ggplot(.,aes(x=doy.as.Date,y=rm.var,color=temp.class,group=year))+
+  scale_color_manual(values=c("black","red"))+
+  scale_y_continuous(breaks=c(3.2,4.3,5,7,9))+
+  facet_grid(site~type)+
+  geom_line()+
+  theme(panel.grid=element_blank())+
+  geom_hline(yintercept=3.2,linetype=2)+
+  geom_hline(yintercept=4.3,linetype=2,color="red")+
+  scale_x_date(limits=c(as.Date("2019-07-01"),as.Date("2019-10-31")),date_breaks="1 month",date_labels = "%m/%d")+
+  labs(x="Date",y="Daily Mean DO (mg/L)",color="Water\nTemperature")+
+  ggtitle("Instantaneous Minimum Dissolved Oxygen",subtitle="Criteria Minimum = 3.2 mg/L (4.3 mg/L if Water Temp > 29°C")
+plt.1
+
+```
+
+# Determine Annual Attainment 
+For the 30-day period, a year attains if <10% of 30-day means are below 5.5 mg/L.  For other periods, the magnitude must be attained on all days for the year to attain (i.e., no annual exceedance frequency). 
+
+```{r}
+
+# Determine attainment
+means$crit[means$period==30] <- 5.5
+means$crit[means$period==7] <- 4
+means$crit[means$period==1 & means$rm.wt>29] <- 4.3
+means$crit[means$period==1 & means$rm.wt<=29] <- 3.2
+means <- means %>% 
+  mutate(attains = ifelse(rm.var > crit,"Attaining","Not_Attaining"))
+
+
+
+# Summarize by Year
+attains <- means %>%
+  filter(year != 2010) %>% 
+  group_by(type,site,period,year,attains) %>% 
+  summarize(n=n()) %>% 
+  pivot_wider(id_cols=all_of(c("type","site","period","year")),names_from = "attains",values_from = "n",values_fill = 0) %>% 
+  mutate(exceed_freq = ifelse(period==30,10,0),
+         percent_not_attaining = 100*Not_Attaining/(Attaining+Not_Attaining),
+         attains = ifelse(percent_not_attaining<=exceed_freq,"Meets","Does Not Meet"),
+         year=as.numeric(paste(year)))
+
+# How many years are not attaining for each period.
+years_attaining <- attains %>% 
+  group_by(type,site,period,attains) %>%
+  summarize(n=n()) %>% 
+  #filter(attains=="Does Not Meet") %>% 
+  mutate(criteria = "Chesapeake Bay")
+years_attaining
+
+attains.30 <- ggplot(attains %>% filter(period==30),aes(x=year,y=percent_not_attaining)) +
+   geom_col()+
+   facet_grid(site~type)+
+   labs(x="",y="% Not Attaining")+
+   scale_y_continuous(breaks=c(0,10,25,50,75))+
+   theme(panel.grid=element_blank())+
+   geom_hline(yintercept=10,linetype=2)+
+   ggtitle("Percent of Rolling Means below Chesapeake Bay 30-day Mean Criterion",
+           subtitle="For 30-day rolling periods falling within July 1-October 31")
+attains.30
+
+
+```
+
+# Compare Years Attaining CB Criteria vs. EPA's Criteria 
+
+```{r echo=FALSE}
+
+epa_exceeds <- all.data %>% 
+  mutate(posat.class = cut(posat.mean,breaks=c(0,66,74,200),labels=c("A","B","C"))) %>% 
+  group_by(type,site,year,posat.class) %>% 
+  summarize(n=n()) %>% 
+  pivot_wider(id_cols = all_of(c("type","site","year")),names_from = "posat.class",
+                               values_from = "n",values_fill = 0) %>% 
+  mutate(exceeds.10 = A,exceeds.50 = A+B) %>% 
+  mutate(    
+    attains.10 = ifelse(exceeds.10<=12,"Attains","Does Not Attain"),
+    attains.50 = ifelse(exceeds.50<=62,"Attains","Does Not Attain"),
+    attains = ifelse(exceeds.10<=12 & exceeds.50<=61,"Attains","Does Not Attain")) %>% 
+  select(-A,-B,-C) %>% 
+  mutate(site = factor(site,levels=c("Penn's Landing","Chester")),
+         year = as.numeric(paste(year))) %>% 
+  filter(year != 2010)
+
+ggplot(epa_exceeds,aes(x=year,y=exceeds.10))+
+  geom_col()+
+  facet_grid(site~type)+
+  scale_y_continuous(limits=c(0,123),breaks=c(0,12,30,60,90,123))+
+  theme(panel.grid=element_blank())+
+  geom_hline(yintercept = 12,linetype=2)+
+  labs(x="Year",y="Days With POSAT < 66%")+
+  ggtitle("Exceedance of EPA 10th Percentile DO Criterion",
+          subtitle="POSAT may fall below 66% on up to 12 days")
+
+ggplot(epa_exceeds,aes(x=year,y=exceeds.50))+
+  geom_col()+
+  facet_grid(site~type)+
+  scale_y_continuous(limits=c(0,123),breaks=c(0,30,62,90,123))+
+  theme(panel.grid=element_blank())+
+  geom_hline(yintercept = 62,linetype=2)+
+  labs(x="Year",y="Days With POSAT < 74%")+
+  ggtitle("Exceedance of EPA Median DO Criterion",
+          subtitle="POSAT may fall below 74% on up to 62 days")
+
+```
+
+# Tabulate numbers of years attaining EPA criteria
+```{r}
+
+# Attainment of both criteria
+tabyl(epa_exceeds,attains,site,type)
+
+# Attainment (10th percentile only)
+tabyl(epa_exceeds,attains.10,site,type)
+
+# Attainment (50th percentile only)
+tabyl(epa_exceeds,attains.50,site,type)
+
+
+```
