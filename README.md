@@ -18,7 +18,7 @@ This code may be cited as supporting information for:
 EPA 2025. Technical Support Document for the Final Rule: Water Quality Standards to Protect Aquatic Life in the Delaware River. US Environmental Protection Agency, Office of Water. Washington, DC. XX pp. https://www.epa.gov/wqs-tech/water-quality-standards-delaware-river
 
 ## References
-Hagy, J. D. III (2025). "Quantifying Dissolved Oxygen Thresholds for Growth and Survival of Juvenile Atlantic Sturgeon in the Tidal-Fresh Delaware River. US Environmental Protection Agency, Office of Research and Development, Center for Environmental Measurement and Modeling, Atlantic Coastal Environmental Science Division, Narragansett, RI. EPA/600/R-24/002 62 pp. https://cfpub.epa.gov/si/si_public_file_download.cfm?p_download_id=549632&Lab=CEMM
+Hagy, J. D. III (2024). "Quantifying Dissolved Oxygen Thresholds for Growth and Survival of Juvenile Atlantic Sturgeon in the Tidal-Fresh Delaware River. US Environmental Protection Agency, Office of Research and Development, Center for Environmental Measurement and Modeling, Atlantic Coastal Environmental Science Division, Narragansett, RI. EPA/600/R-24/002 62 pp. https://cfpub.epa.gov/si/si_public_file_download.cfm?p_download_id=549632&Lab=CEMM
 
 Niklitschek, E. J. and D. H. Secor (2005). "Modeling spatial and temporal variation of suitable nursery habitats for Atlantic sturgeon in the Chesapeake Bay." Estuarine, Coastal and Shelf Science 64(1): 135-148. http://doi.org/10.1016/j.ecss.2005.02.012
 
