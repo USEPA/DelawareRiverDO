@@ -5,6 +5,8 @@ date: "`r Sys.Date()`"
 output:
   html_document:
     df_print: paged
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -19,14 +21,11 @@ library(wesanderson)
 library(viridis)
 library(gratia)
 library(modelr)
+library(here)
 
 pal <- wes_palette("Zissou1",5,"discrete")
 nogrid <- theme(panel.grid=element_blank())
 
-dataPath <- "data/"
-figurePath <- "figures/"
-rawPath <- "raw/"
-outputPath <- "outputs/"
 ```
 
 ## Overview
@@ -68,7 +67,7 @@ discharge.daily <- readNWISDaily(siteNumber, "00060", startDate, endDate)
 # save(HADO_WQ,file=paste0(dataPath,"HADO_Results_at_Chester_and_Penn_Landing.Rdata"))
 
 #Load the saved model results
-load(paste0(dataPath,"HADO_Results_at_Chester_and_Penn_Landing.Rdata"))
+load(here("data","HADO_Results_at_Chester_and_Penn_Landing.Rdata"))
 
 # Calculate Percent Oxygen Saturation and extract the date-part from the time stamp.
 HADO_WQ <- HADO_WQ %>% 
@@ -93,8 +92,8 @@ Combined modeled values for Chester and Penn's Landing with observed daily means
 ```{r Combine Modeled and Observed, echo=TRUE}
 
 # Load the observed data
-load(paste0(dataPath,"5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
-load(paste0(dataPath,"5. DR_Chester_Summer_Complete.Rdata"))
+load(here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+load(here("data","5. DR_Chester_Summer_Complete.Rdata"))
 
 # Combine the summer data time series from both sites and calculate a date
 # variable from doy and year (used for merging).  Rename the variables to
@@ -103,7 +102,6 @@ wq_observed <- rbind(
   drc_summer %>% mutate(Site="Chester"),
   drpl_summer %>% mutate(Site="Penn's Landing")
 ) %>% 
-  mutate(date=as.Date(doy,origin=as.Date(paste0(year-1,"-12-31")))) %>% 
   rename(do.obs=do.mgL.mean,sal.obs=salinity.mean,wt.obs=wt.mean,posat.obs=posat.mean) %>% 
   select(Site,date,do.obs,sal.obs,wt.obs,posat.obs)
 
@@ -137,7 +135,7 @@ plt <- df %>%
           legend.background = element_blank())
 plt
 
-png(filename=paste0(figurePath,"6.0 Observed vs. Modeled DO at Gauges.png"),
+png(filename=here("figures","6.0 Observed vs. Modeled DO at Gauges.png"),
     width=6,height=3,units="in",res=300)
   plt
 dev.off()
@@ -306,8 +304,8 @@ ggplot()+
 # Calculate the 10th Percentile DO for every year in observed and HADO
 p.10 <- df.Penn %>% 
   group_by(year) %>% 
-  summarize(HADO.10=quantile(do.pred,prob=0.1),
-            OBS.10=quantile(do.obs,prob=0.1),
+  summarize(HADO.10=quantile(do.pred,prob=0.1,na.rm=TRUE),
+            OBS.10=quantile(do.obs,prob=0.1,na.rm=TRUE),
             MOD.10=quantile(do.HADO,prob=0.1,na.rm=TRUE)) %>% 
   mutate(delta_DO=HADO.10-OBS.10)
 knitr::kable(p.10,caption="Estimates of 10th Percentile DO (mg/L)")
@@ -318,8 +316,8 @@ summary(p.10$delta_DO)
 # Calculate the median DO for every year in observed and HADO
 med <- df.Penn %>% 
   group_by(year) %>% 
-  summarize(HADO.med=quantile(do.pred,prob=0.5),
-            OBS.med=quantile(do.obs,prob=0.5),
+  summarize(HADO.med=quantile(do.pred,prob=0.5,na.rm=TRUE),
+            OBS.med=quantile(do.obs,prob=0.5,na.rm=TRUE),
             MOD.med=quantile(do.HADO,prob=0.5,na.rm=TRUE)) %>% 
   mutate(delta_DO=HADO.med-OBS.med)
 knitr::kable(med,caption="Estimates of Median DO (mg/L)")
@@ -335,10 +333,11 @@ summary(med$delta_DO)
 
 restoredWQ <- rbind(df.Penn,df.Chester) %>% 
   select(Site,date,doy,year,do.pred,sal.obs,wt.obs) %>% 
+  filter(complete.cases(.)) %>% 
   rename(do.mean=do.pred,sal.mean=sal.obs,wt.mean=wt.obs) %>% 
   mutate(posat.mean=do.mean*100/gas_O2sat(S=sal.mean,t=wt.mean))
 
-#save(restoredWQ,file=paste0(dataPath,"6.0 Estimates of Restored DO.Rdata"))
+save(restoredWQ,file=here("data","6.0 Estimates of Restored DO.Rdata"))
 
 ```
 
@@ -350,11 +349,9 @@ restoredWQ <- rbind(df.Penn,df.Chester) %>%
 # Build single file with observed data
 df.obs <- rbind(
 drc_summer %>% 
-  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
   select(date,posat.mean) %>% 
   mutate(Site="Chester"),
 drpl_summer %>% 
-  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
   select(date,posat.mean) %>% 
   mutate(Site="Penn's Landing")
 ) %>% mutate(type="Observed")
@@ -378,14 +375,13 @@ names(df) <- c("Site","date","Observed.POSAT","Restored.POSAT","Change.POSAT")
 # Repeat above steps for DO mg/L
 
 ```{r}
+
 # Build single file with observed data
 df.obs <- rbind(
 drc_summer %>% 
-  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
   select(date,do.mgL.mean) %>% 
   mutate(Site="Chester"),
 drpl_summer %>% 
-  mutate(date=as.Date(doy,origin=paste0(year-1,"-12-31"))) %>% 
   select(date,do.mgL.mean) %>% 
   mutate(Site="Penn's Landing")
 ) %>% mutate(type="Observed")
