@@ -1,12 +1,3 @@
----
-output:
-  html_document: default
-  word_document: default
-editor_options: 
-  markdown: 
-    wrap: 72
----
-
 # Atlantic Sturgeon Cohort Model
 
 ## Overview
