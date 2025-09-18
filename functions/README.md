@@ -67,7 +67,7 @@ The function returns a data frame containing the following variables:
 
 | Variable | Description |
 | :--- | :--- |
-| doy | sampling day of year |
+| date | sampling date |
 | spCond.mean | Specific conductivity at 24 degrees (µS/cm) |
 | wt.mean | Water temperature (degrees C) | 
 | do.mgL.mean | Dissolved oxygen concentration (mg/L) |
@@ -75,7 +75,7 @@ The function returns a data frame containing the following variables:
 | salinity.mean | Salinty (unitless) |
 | posat.mean | Percent oxygen saturation (unitless) |
 
-The function uses the ec2pss function in the wql package to compute salinity from specific conductivity and the gas_O2sat function to compute percent oxygen saturation.  If salinity is less than 1, the function uses APHA method for computing oxygen solubility while the Weiss method is used for higher salinity.  For further information, see documentation for the gas_O2sat function.
+The function uses the ec2pss function in the wql package to compute salinity from specific conductivity and the gas_O2sat function in the marelac package to compute percent oxygen saturation.  If salinity is less than 1, the function uses APHA method for computing oxygen solubility while the Weiss method is used for higher salinity.  For further information, see documentation for the gas_O2sat function.
 
 
 
