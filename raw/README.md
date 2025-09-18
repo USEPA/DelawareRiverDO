@@ -17,5 +17,8 @@ This R code file creates a data frame containing catch-per-unit effort data from
 ## PennsLandingDV (retrieved 2023-03-09.txt)
 This file contains the raw data obtained from the United States Geological Survey National Water Information System data portal (https://waterdata.usgs.gov/nwis) and saved as .txt.  The file contains USGS's original self-documenting file header.
 
-## Sturgeon Age-Size Table.csv
+## 2020 Park.csv
 This file contains data provided by Ian Park (DNREC) documenting captures, tagging, and recaptures of juvenile Atlantic Sturgeon.  The first line contains variable headers, as follows: Original Tag Date,Fork Length (mm),Total Length (mm),Weight (g),PIT Tag Code,Project,Recapture Date,Fork Length (mm),Total Length (mm),Weight (g),PIT Tag Code,Recapture Project,Days at Large,TL Growth (g),TL Growth/Day (g/d)
+
+## 2010 Calvo.csv
+This file contains data on fish length (mm) and weight (g) along with date and location of capture.  The data are from the following publication:  Calvo, L., H. M. Brundage, III, D. Haidvogel, D. Kreeger, R. Thomas, J. C. I. O'Herron and E. N. Powell (2010). Effects of flow dynamics, salinity, and water quality on the Atlantic Sturgeon, the Shornose Sturgeon, and the Eastern Oyster in the Oligohaline zone of the Delaware River. Final Report Project Year 2008-2009. Philedelphia, PA, U.S. Army Corps of Engineers, Philadelphia District: 106 pp.
