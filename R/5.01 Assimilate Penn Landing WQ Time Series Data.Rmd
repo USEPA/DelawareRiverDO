@@ -111,7 +111,7 @@ drPenn_ctdo %>%
 Ensure data were read correctly and are sufficient for the 
 intended analysis 
 
-```{r review data, echo=TRUE}
+```{r review data, echo=TRUE, warning=FALSE}
 # Load the Penn's Landing Time Series
 load(here("data","5.01 Delaware River at Penn Landing.Rdata"))
 
@@ -206,10 +206,10 @@ plt <- tmp %>%
 plt
 
 # This creates figure A1-2 in the TSD.
-# pdf(file=here("figures","5.01 Penn Landing POSAT 2002-2022.pdf"),
-#     width=6,height=8,useDingbats = FALSE,paper="letter")
-#   plt
-# dev.off()
+ pdf(file=here("figures","5.01 Penn Landing POSAT 2002-2022.pdf"),
+     width=6,height=8,useDingbats = FALSE,paper="letter")
+   plt
+ dev.off()
 
 ```
 
@@ -228,18 +228,8 @@ ts_input <- drPenn_ctdo %>% mutate(year=year(date))
 drpl_summer <- do.call(rbind,lapply(Year,imputeByYear))
 drpl_summer <- filter(drpl_summer,!is.na(year))
 
-# Make a plot to check data
-drpl_summer %>% 
-  pivot_longer(cols=all_of(c("salinity.mean","wt.mean","posat.mean")),
-               names_to="param",values_to="value") %>% 
-  ggplot(aes(x=doy,y=value))+
-    facet_grid(param~year,scales="free_y")+
-    geom_point()+
-  theme(panel.grid=element_blank())+
-  scale_x_continuous(breaks=seq(150,300,by=100))
-
 # Don't overwrite file as saved.
-#save(drpl_summer,file=here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+save(drpl_summer,file=here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
 
 ```
 
