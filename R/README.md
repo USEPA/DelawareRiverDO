@@ -112,3 +112,6 @@ This program creates a PDF file that was modified with additional labels in Adob
 
 ### 7.04 Compare Seasonal Minimum and 10th Percentile.Rmd
 This program estimates the minimum DO, as percent saturation and as concentration, that would be expected in the Delaware River when the 10th percentile is at the criterion value of 66%.  The program also estimates for percent saturation the average 10th percentile value that will be expected if the 10th percentile is always attained, and the corresponding average value for the seasonal minimum percent saturation.  A graph from this program appears in the Techinical Support Document for the final rule.
+
+### 7.05 Evaluate Water Temperature Trends.Rmd
+This program evaluates patterns and trends in water temperature, considering long term trends, seasonal differences in long term trends, and differences in water temperature between Penn's Landing and Chester.
