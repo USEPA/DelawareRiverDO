@@ -151,3 +151,14 @@ This data file contains the data frame HADO_WQ which contains daily average valu
 | SAL | daily average salinity (unitless) |
 | Site | Site name |
 
+## HADO results for Ammonia nitrogen and Nitrate plus Nitrite
+This file includes a subset of 2019 EFDC/WASP simulation model results for ammonia nitrogen and nitrate plus nitrite.  The file contains vertically averaged data from the HADO scenario with actual wastewater flows.  The data are further subsetted to include only data from zones 2 and 3 of the Delaware River.
+| :--- | :--- |
+| zone | Delaware River Zone ID  |
+| J | EFDC grid along-channel grid index  |
+| date | date |
+| NH34 | daily average ammonia nitrogen (mg-N/L) |
+| NO23 | daily average nitrate plus nitrite  (mg-N/L) |
+| din | dissolved inorganic nitrogen = NH34 + NO23 (mg-N/L) |
+
+
