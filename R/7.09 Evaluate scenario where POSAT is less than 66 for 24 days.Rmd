@@ -1,0 +1,98 @@
+---
+title: "Evaluate 24 days of non attainment"
+author: "J Hagy"
+date: "2024-09-16"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(quantreg)
+library(here)
+
+# Load the existing percentiles
+load(here("data","6.02 DO and POSAT percentiles.Rdata"))
+# Percentile file does not include the seasonal minimum
+
+# Load the summer complete data
+load(here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+load(here("data","5. DR_Chester_Summer_Complete.Rdata"))
+
+```
+
+## Evaluating an unlikely scenario
+Commenters noted that it was possible for POSAT to be less than the 66% criterion value for up to 24 days without violating the EPA's criteria. For this to happen, POSAT would have to be less than 66% for the period June 18 - June 30 (12 days in the Spawning and Larval Development Season) and July 1 - July 12 (12 days in the Juvenile Development Season).
+
+Here we evaluate if it is likely for this scenario to occur. To begin, we need to compute for each year the highest POSAT value that occurred between June 18 and July 12.  If this value is less than 66%, we know that POSAT could potentially be less than the criteria for 24 days in a row. Then, we can relate this maximum to the 10th percentile of POSAT in the Juvenile Development season.
+
+```{r}
+
+# What is the highest value in each year from June 18 to July 12
+seasonalMax <- rbind(
+  drc_summer %>% mutate(Site="Chester"),
+  drpl_summer %>% mutate(Site="Penn's Landing")) %>%
+  mutate(doy.as.date = as.Date(paste0("1970-",format(date,"%m-%d")))) %>%  
+  filter(between(doy.as.date,as.Date("1970-06-18"),as.Date("1970-07-12"))) %>% 
+  group_by(Site,year) %>% 
+  summarize(POSAT.max = max(posat.mean))
+
+# Extract the POSAT 10th percentile from the percentiles variable 
+p10 <- percentiles %>%
+  filter(percentile==0.1,type=="Observed") %>% 
+  mutate(p10=posat) %>% 
+  select(Site,year,p10)
+
+# Years the 10th percentile criterion was attained.
+p10[p10$p10>66,]
+
+# Joint them together
+df <- left_join(seasonalMax,p10,by=c("Site","year")) %>% ungroup()
+
+```
+
+For Penn's Landing, there was a linear relationship between the highest POSAT value during June 18 - July 12 and the 10th Percentile value of POSAT for the Juvenile Development Season.  This relationship was less well defined for Chester.
+
+At Chester, POSAT remained below 66% in only 2 years (2004 and 2005) and in those years, the 10th percentile POSAT for the Juvenile Development season was 52% and 55%, well below the EPA's criterion value of 66%. The 10th percentile criterion was attained in 5 years (2013,2015,2016,2017,2018). In each of those years the lowest POSAT value that occurred during June 18-July 12 was 81% (2016).  Thus, when the EPA's 10th percentile criterion of 66% is attained at Chester, there percent saturation is always above 66% during the 24 days at the end of the _Spawning and Larval Development_ season and the beginning of the _Juvenile Development_ season.
+
+```{r}
+
+ggplot(df,aes(x=POSAT.max,y=p10))+
+    facet_wrap(~Site)+
+    geom_point()+
+    geom_vline(xintercept=66,linetype=2)+
+    geom_hline(yintercept=66,linetype=3)+
+    theme(panel.grid=element_blank())+
+    geom_smooth(method="lm")+
+    labs(x="Maximum POSAT during 6/18 - 7/12",y="10th Percentile for Juvenile Development season")
+
+# Years at Chester where there were 24 or more consecutive days with POSAT<66% during June 18-July 12.
+df %>% filter(Site=="Chester",POSAT.max<66)
+
+# Years at Chester where the 10th Percentile during the Juvenile Development Season was >66%.
+df %>% filter(Site=="Chester",p10>66)
+
+```
+
+For Penn's Landing, we can fit a linear regression to relate the highest POSAT value during June 12 - July 12 and the 10th percentile POSAT value for the _Juvenile Development_ season.  Then we can predict the 10th percentile for the condition when the highest POSAT during the 24 day period is exactly 66%.  
+
+```{r}
+
+# Fit a regression relating POSAT.max and p10.
+fit <- lm(p10 ~ POSAT.max,data=df %>% filter(Site=="Penn's Landing"))
+summary(fit)
+
+# Predict p10 if POSAT.max=66%. 
+pred <- predict(fit,data.frame(POSAT.max=66),se.fit=TRUE)
+
+# Compute the upper 99.9% confidence limit.  We can expect with 99.9% confidence that the 10th percentile will be less than this level!
+c(pred$fit-qt(0.99,18)*pred$se.fit,pred$fit+qt(0.99,18)*pred$se.fit)
+
+```
+
+If all 24 of the values are <66% (i.e., the highest value is exactly 66%), then the expected 10th percentile value at Penn's Landing is 53% and the 99% confidence interval (49% to 56%) does not include 66%.  Thus, if the EPA's 10th percentile criterion is attained at Penn's Landing, it is very unlikely that DO could be less than 66% for 24 days in a row. If percent saturation was <66% for 24-days in a row, the 10th percentile for the _Juvenile Development_ Season would likely be no higher than 56%.
+
+Based on this analysis, it can be concluded that the commenters scenario is very unlikely.
