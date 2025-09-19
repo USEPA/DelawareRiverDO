@@ -31,6 +31,8 @@ The code used the following R-packages.
 | here | 1.0.1 | Ensuring accurate paths to files |
 | betareg | 3.2-4 | Fitting regressions to predict a proportion |
 | patchwork | 1.3.1 | compose multipanel plots |
+| zoo | 1.8-14 | compute rolling means |
+| janitor | 2.2.1 | cleaning data |
 
 ## List of Programs (R Markdown)
 
@@ -95,9 +97,10 @@ For each percentile, the program predicts the expected median HSI and associated
 This program generates Figure 8 and Figure 9 in the TSD and the threshold values reported in Table 3.
 
 ### 6.04 Fit QGAMs Relating HSI to DO Percentiles.Rmd
-This program follows the identical workflow for program 6.03, but uses DO (mg/L) instead of POSAT.  
+This program follows the identical workflow for program 6.03, but uses DO (mg/L) instead of POSAT. This program generates Figure A7-1 and Figure A7-2 in the TSD and the threshold values reported in Table 5.
 
-This program generates Figure A7-1 and Figure A7-2 in the TSD and the threshold values reported in Table 5.
+### 7.0 7.0 Evaluate Chesapeake Bay Criteria in Delaware River.Rmd
+This program compares attainment of the Chesapeake Bay DO criteria if applied to data from the Delaware River with attainment of the EPA's criteria in the Delaware River.  This addresses a question suggesting that the EPA's criteria are far more stringent than the criteria for Chesapeake Bay.  The analysis shows that there is not a large difference in stringency.
 
 ### 7.01 Evaluate Seasonal Attainment
 These calculations are used in the economic analysis to determine whether additional waste water treatment plant controls are needed to attain EPA’s proposed criteria in each of the three seasons.
