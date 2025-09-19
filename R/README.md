@@ -116,5 +116,14 @@ This program estimates the minimum DO, as percent saturation and as concentratio
 ### 7.05 Evaluate Water Temperature Trends.Rmd
 This program evaluates patterns and trends in water temperature, considering long term trends, seasonal differences in long term trends, and differences in water temperature between Penn's Landing and Chester.
 
-### 7.06 Evaluate Fish Data from PWD.Rmd
+### 7.06 Correlate Chester and Penn WQ values.Rmd
+This program examines whether it would be possible to improve imputation of missing values in the water quality time series at Chester and Penn's Landing by using an empirical relationship between the time series at the two sites.  For relatively long gaps, the relationship could be used, rather than linear interpolation.  This analysis shows that this approach is unlikely to improve the imputation.
+
+### 7.07 Evaluate Fish Data from PWD.Rmd
 This program assembles and assesses the content of fish length and weight data provided by the Philadelphia Water Department to determine its potential application to the EPA's dissolved oxygen criteria derivation.
+
+### 7.08 Evaluation of NO23 in HADO.Rmd
+This program shows that implementing nitrification in wastewater discharges is unlikely to result in nitrate concentrations in the Delaware River that approach the drinking water standard for nitrate (10 mg/L).
+
+### 7.09 Evaluate scenarios where POSAT is less than 66 for 24 days.Rmd
+This program shows that if the EPA's 10th percentile criterion is attained, it is very unlikely that POSAT will be <66% for 24 days while attaining the EPA's criteria.  This would have to occur and the end of the _Spawning and Larval Development_ season and the beginning of the _Juvenile Development_ season, using the 12 days of allowed exceedance in each season.
