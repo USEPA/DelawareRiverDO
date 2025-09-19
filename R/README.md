@@ -30,6 +30,7 @@ The code used the following R-packages.
 | lmodel2 | 1.7-4 | Fitting Model II regressions  |
 | here | 1.0.1 | Ensuring accurate paths to files |
 | betareg | 3.2-4 | Fitting regressions to predict a proportion |
+| patchwork | 1.3.1 | compose multipanel plots |
 
 ## List of Programs (R Markdown)
 
@@ -128,3 +129,6 @@ This program shows that implementing nitrification in wastewater discharges is u
 
 ### 7.09 Evaluate scenarios where POSAT is less than 66 for 24 days.Rmd
 This program shows that if the EPA's 10th percentile criterion is attained, it is very unlikely that POSAT will be <66% for 24 days while attaining the EPA's criteria.  This would have to occur and the end of the _Spawning and Larval Development_ season and the beginning of the _Juvenile Development_ season, using the 12 days of allowed exceedance in each season.
+
+## 7.10 Predict Attaining DO Timeseries.Rmd
+This program estimates a daily climatology for a scenario at Chester and Penn's Landing where the 1oth percentile of percent oxygen saturation is minimumally 66%.  The program computes the expected survivoreship of juvenile Atlantic Sturgeon during the _Juvenile Development_ season under this scenario and compares it to a scenario where all DO concentrations below 6 mg/L are replaced with 6 mg/L.
