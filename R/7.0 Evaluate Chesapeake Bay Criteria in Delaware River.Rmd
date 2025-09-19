@@ -11,29 +11,32 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(wesanderson)
 library(here)
 library(zoo)
 library(janitor)
+
+pal <- wes_palette("Zissou1",5,"discrete")
 
 ```
 
 In 2003, the Chesapeake Bay Program office released regional criteria guidance, providing the EPA's recommendations to Chesapeake Bay states for use in establishing their water quality standards for Chesapeake Bay waters, including criteria for dissolved oxygen.  The criteria address seasonally- and spatially-defined designated uses that bear similarity to the specified zones of the Delaware River. These include the "Migratory fish spawning and nursery use" zone, which applies from February 1 through May 31 in and provides for survival and growth of larval and juvenile tidal-fresh residence fish, including protection of threatened and endangered species.  These criteria include a 7-day mean criterion of 6 mg/L and an instantaneous minimum of 5 mg/L. The listed species include Shortnose and Atlantic Sturgeon. 
 
-The criteria guidance also specifies an "Open-water fish and shellfish use", which applies throughout the year in waters throughout the Bay that are not below a pycnocline dividing the water column into two distinct layers. DO criteria are included for the 30-day mean, 7-day mean, and instantaneous minimum, addressing chronic and acute impacts on fish and shellfish, including endangered species (i.e., sturgeons).  For low salinity waters, the 30-day mean criterion is 5.5 mg/L.  For the 7-day mean, the criterion is 4 mg/L across all salinity zones.  For the instantaneous minimum, the criterion is 3.2 mg/L, except for when the water temperature is greater than 29 °C, when the instantaneous minimum is 4.3 mg/L, reflecting the increased sensitivity of shornose sturgeon at high temperature.  The 30-day mean criterion for Chesapeake Bay is assessed against a 10% cumulative frequency distribution curve that is symmetric in space and time.  In this analysis, the assessment was simplified to consider only temporal exceedance, wherein a year attains the 30-day mean criterion if less than 10% of the assessed days exceeded the criteria magnitude.
+The criteria guidance also specifies an "Open-water fish and shellfish use", which applies throughout the year in waters throughout the Bay that are not below a pycnocline dividing the water column into two distinct layers. DO criteria are included for the 30-day mean, 7-day mean, and instantaneous minimum, addressing chronic and acute impacts on fish and shellfish, including endangered species (i.e., sturgeons).  For low salinity waters, the 30-day mean criterion is 5.5 mg/L.  For the 7-day mean, the criterion is 4 mg/L across all salinity zones.  For the instantaneous minimum, the criterion is 3.2 mg/L, except for when the water temperature is greater than 29 °C, when the instantaneous minimum is 4.3 mg/L, reflecting the increased sensitivity of shortnose sturgeon at high temperature.  The 30-day mean criterion for Chesapeake Bay is assessed against a 10% cumulative frequency distribution curve that is symmetric in space and time.  In this analysis, the assessment was simplified to consider only temporal exceedance, wherein a year attains the 30-day mean criterion if less than 10% of the assessed days exceeded the criteria magnitude.
 
 For dissolved oxygen in the Juvenile Development season that EPA defined for the specified zones of the Delaware River (i.e, July 1 through October 31), the EPA's DO criteria include a percent oxygen saturation criterion of 66% that may be exceeded on no more than 12 days per year, which is about 10% of the time.  The EPA's criteria also include a value of 74%, which can be exceeded in no more than 61 days, or about 50% of the time.  
 
 Although a direct comparison of these criteria is challenging because of the different ways that the requirements are expressed, it is possible to compare them by considering how many years oxygen levels in the Delaware River would attain both the Chesapeake Bay criteria and the EPA's Delaware River criteria under both existing and restored conditions.
 
-For the DO levels observed during 2002-2022 (20 years) at Penn's Landing and Chester during the Juvenile Development season, the Chesapeake Bay 30-day mean criterion of 5.5 mg/L was not attained in 19 years at Penn's Landing and 16 years at Chester. The 7-day mean criterion was not attained in 6 years at Penn's Landing and 2 years at Chester, while the instantaneous minimum was no attained in only 2 years at Penn's Landing and 1 year at Chester.
+For the DO levels observed during 2002-2022 (20 years excluding 2010) at Penn's Landing and Chester during the Juvenile Development season, the Chesapeake Bay 30-day mean criterion of 5.5 mg/L was not attained in 18 years at Penn's Landing and 14 years at Chester. The 7-day mean criterion was not attained in 6 years at Penn's Landing and 2 years at Chester, while the instantaneous minimum was no attained in only 2 years at Penn's Landing and 1 year at Chester.
 
-For the estimated restored DO conditions, the Chesapeake Bay criterion for the 30-day mean would still be not attained in 8 years at Penn's Landing. The 30-day mean would be expected to be attained completely at Chester and all other criteria would be attained completely at both sites.
+For the estimated restored DO conditions, the Chesapeake Bay criterion for the 30-day mean would still be not attained in 6 years at Penn's Landing. The 30-day mean would be expected to be attained completely at Chester and all other criteria would be attained completely at both sites.
 
-Non-attainment of the EPA's criteria under observed conditions is similar to the chesapeake Bay criteria, with non-attainment in all 20 years at Penn's Landing at 17 of 20 years at Chester (compared to 19 and 16 for the 30-day mean criterion).  Similarly, under the restored DO scenario, the EPA's criteria would also not be attained in 8 years at Penn's Landing, but - like the Chesapeake Bay criteria - would be attained in all years at Chester.
+Non-attainment of the EPA's criteria under observed conditions is similar to the chesapeake Bay criteria, with non-attainment in all 20 years at Penn's Landing at 17 of 20 years at Chester (compared to 18 and 14 for the 30-day mean criterion). Similarly, under the restored DO scenario, the EPA's criteria would also not be attained in 8 years at Penn's Landing, but - like the Chesapeake Bay criteria - would be attained in all years at Chester.
 
-The frequency of non-attainment trended downward for both the Chesapeake Bay and Delaware DO criteria, wherein DO levels were slightly higher after 2010 than before.  In some years included as not-attaining, the number of days in excess of the allowable exceedance frequency was relatively small.  For the Chesapeake Bay criteria, the percentage of days with 30-day rolling means that fell below 5.5 mg/L likewise decreased.   
+The frequency of non-attainment trended downward for both the Chesapeake Bay and Delaware DO criteria, wherein DO levels were slightly higher after 2010 than before. In some years included as not-attaining, the number of days in excess of the allowable exceedance frequency was relatively small.  For the Chesapeake Bay criteria, the percentage of days with 30-day rolling means that fell below 5.5 mg/L likewise decreased.   
 
-Based on this analysis, it can be concluded that the Chesapeake Bay DO criteria are likely neither more stringent nor less stringent than the Delaware River DO criteria, with the caveat that this analysis accounts for the specified exceedance frequency only for the Delaware River DO criteria.  The Chesapeake Bay DO criteria clearly articulate the criteria duration, but the allowable exceedance frequency involves a relatively complex analysis encompassing joint consideration of the allowable spatial and temporal exceedance. This analysis is not  replicated here in application to the data from the Delaware River.
+Based on this analysis, it can be concluded that the Chesapeake Bay DO criteria are likely neither more stringent nor less stringent than the Delaware River DO criteria. The Chesapeake Bay DO criteria were applied assuming 10% temporal exceedance for the 30-day criterion, a simplification of the assessment methodology usually applied to that criterion, which is a balanced space-time cumulative frequency diagram method.
 
 Below are graphs and data supporting this analysis and discussion.
 
@@ -53,8 +56,7 @@ obs <- rbind(
   drpl_summer %>% mutate(site="Penn's Landing"),
   drc_summer %>% mutate(site="Chester")
 ) %>% 
-  mutate(date = as.Date(doy,origin=paste0(year-1,"-12-31")),
-         type="Observed") %>% 
+  mutate(type="Observed") %>% 
   select(type,site,date,year,do.mgL.mean,posat.mean,wt.mean)
 
 res <- restoredWQ %>% 
@@ -70,6 +72,7 @@ rm(obs,res)
 ```
 
 ## Calculate rolling means
+Use the rollmean function from the zoo package
 
 ```{r}
 
@@ -85,8 +88,6 @@ mean.rm <- function(inData,Period,Param,Year,Site,Type) {
   mn <- mn[!is.na(mn$rm.var),]
   return(mn)  
 }
-
-#df <- mean.rm(all.data,30,"do.mgL.mean",2019,"Chester","Observed")
 
 means <- NULL
 for (i in seq(2002,2022)) {
@@ -123,14 +124,14 @@ means <- means %>%
   mutate(
     year=factor(year),
     site = factor(site,levels=c("Penn's Landing","Chester")),
-    doy.as.Date = as.Date(paste0(2019,"-",month(date),"-",day(date))), 
+    doy.as.date = as.Date(paste0("2019-",format(date,"%m-%d"))), 
     temp.class = ifelse(rm.wt>29,">29","<29")
   )
 
 # Graph 30-days DO Means
 plt.30 <- means %>% 
   filter(period==30) %>% 
-  ggplot(.,aes(x=doy.as.Date,y=rm.var,group=year))+
+  ggplot(.,aes(x=doy.as.date,y=rm.var,group=year))+
   facet_grid(site~type)+
   geom_line()+
   scale_y_continuous(breaks=c(4,5,5.5,6,7,8,9))+
@@ -145,7 +146,7 @@ plt.30
 # Graph 7-day DO means
 plt.7 <- means %>% 
   filter(period==7) %>% 
-  ggplot(.,aes(x=doy.as.Date,y=rm.var,group=year))+
+  ggplot(.,aes(x=doy.as.date,y=rm.var,group=year))+
   facet_grid(site~type)+
   geom_line()+
   scale_y_continuous(breaks=c(4,5,7,9))+
@@ -160,17 +161,18 @@ plt.7
 # Graph 7-day DO means
 plt.1 <- means %>% 
   filter(period==1) %>%
-  ggplot(.,aes(x=doy.as.Date,y=rm.var,color=temp.class,group=year))+
-  scale_color_manual(values=c("black","red"))+
+  ggplot(.,aes(x=doy.as.date,y=rm.var,color=temp.class,group=year))+
+  scale_color_manual(values=c("#000000",pal[5]))+
   scale_y_continuous(breaks=c(3.2,4.3,5,7,9))+
   facet_grid(site~type)+
   geom_line()+
   theme(panel.grid=element_blank())+
   geom_hline(yintercept=3.2,linetype=2)+
-  geom_hline(yintercept=4.3,linetype=2,color="red")+
+  geom_hline(yintercept=4.3,linetype=2,color=pal[5])+
   scale_x_date(limits=c(as.Date("2019-07-01"),as.Date("2019-10-31")),date_breaks="1 month",date_labels = "%m/%d")+
   labs(x="Date",y="Daily Mean DO (mg/L)",color="Water\nTemperature")+
-  ggtitle("Instantaneous Minimum Dissolved Oxygen",subtitle="Criteria Minimum = 3.2 mg/L (4.3 mg/L if Water Temp > 29°C")
+  ggtitle("Instantaneous Minimum Dissolved Oxygen (mg/L)",
+          subtitle = "Minimum is 3.2 mg/L, or 4.3 if water temperature >29")
 plt.1
 
 ```
@@ -210,7 +212,7 @@ years_attaining <- attains %>%
 years_attaining
 
 attains.30 <- ggplot(attains %>% filter(period==30),aes(x=year,y=percent_not_attaining)) +
-   geom_col()+
+   geom_col(fill=pal[1])+
    facet_grid(site~type)+
    labs(x="",y="% Not Attaining")+
    scale_y_continuous(breaks=c(0,10,25,50,75))+
