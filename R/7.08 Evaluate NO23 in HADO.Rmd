@@ -53,8 +53,17 @@ The data processing steps below read data from DRBC's EFDC/WASP Model (actual fl
 # dat.fma <- filter(dat.fma,J>143)
 # dat.fma$zone <- cut(dat.fma$J,breaks=c(142,177.5,264),labels=c(2,3))
 
+# Reduce data to daily averages
+# dat.fma <- dat.fma %>% 
+#   select(zone,datetime,J,NH34,NO23) %>% 
+#   mutate(date = as.Date(format(datetime,format="%Y-%m-%d"))) %>% 
+#   group_by(zone,J,date) %>% 
+#   summarize(NH34 = mean(NH34),
+#             NO23 = mean(NO23))
+
 # Save the data to a file.
-#save(dat.fma,file=here("data","Nitrogen from HADO.Rdata"))
+#save(dat.fma,file=here("data","7.08 Nitrogen from HADO.Rdata"))
+
 ```
 
 ## Load the NH4 and NO23 model outputs and evaluate.
@@ -63,7 +72,7 @@ Determine the 95th percentile of each variable
 
 ```{r}
 
-load(here("data","Nitrogen from HADO.Rdata"))
+load(here("data","7.08 Nitrogen from HADO.Rdata"))
 
 # By Zone
 dat.fma %>% 
