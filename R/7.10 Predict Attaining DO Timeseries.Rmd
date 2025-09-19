@@ -1,0 +1,221 @@
+---
+title: "7.0 Predict Attaining DO Timeseries"
+author: "J. Hagy"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(viridis)
+library(quantreg)
+library(wesanderson)
+library(marelac)
+library(here)
+
+
+basic_theme <- theme_classic() +
+  theme(axis.text=element_text(size=14),
+        axis.title=element_text(size=14))
+nogrid <- theme(panel.grid=element_blank())
+largetext <- theme(axis.text=element_text(size=14),
+                   axis.title = element_text(size=14))
+
+pal <- wes_palette("Zissou1",5,type="discrete")
+
+```
+
+# Overview
+NOAA requested that the EPA estimate the expected difference in the fraction of surviving individuals in a cohort under EPA's proposed criteria vs. alternative criteria such as a scenario where the minimum DO is 6 mg/L.
+
+Based on the approach that the EPA has used to develop it's proposed criteria, we expect that the habitat suitability index, HSI will be greater than zero if dissolved oxygen levels exceed the criteria in all years. However, EPA has not estimated the percent saturation level expected on _each_ day of the _Juvenile Development_ season if the proposed criteria are just barely attained. The EPA expects that the seasonal minimum DO level when the 10th percentile criterion is exactly 66% will be less than 6 mg/L (see program 7.04). This estimate would be needed if EPA wanted to compare expected survivorship during the _Juvenile Development_ season when EPA's criteria are attained with survivorship under an alternative scenario, such as a minimum of 6 mg/L. 
+
+```{r load data}
+
+# Load Percentiles
+load(here("data","6.02 DO and POSAT Percentiles.Rdata"))
+
+# Load the Complete Summer Time Series for Chester and Penn Landing
+load(here("data","5. DR_Chester_Summer_Complete.Rdata"))
+load(here("data","5.01 DR_Penn_Landing_Summer_Complete 2002-2022.Rdata"))
+
+observed <- rbind(drc_summer %>% mutate(Site="Chester"),
+                     drpl_summer %>% mutate(Site="Penn's Landing")) %>% 
+  select(Site,year,date,wt.mean,salinity.mean,posat.mean) %>% 
+  rename(sal.mean = salinity.mean) %>% 
+  mutate(type="Observed")
+
+# Restored DO Data
+load(here("data","6.0 Estimates of Restored DO.Rdata"))
+
+restored <- restoredWQ %>% 
+  select(Site,year,date,wt.mean,sal.mean,posat.mean) %>% 
+  mutate(year=as.numeric(paste(year)),type="Restored")
+
+wq_timeseries <- rbind(observed,restored)
+
+```
+
+# What is the restored DO climatology?
+The median value each day of the projected restored DO distribution (i.e., the climatology) will exceed EPA's proposed criteria in most years. To compute a barely-attaining DO time series, we can compute both the observed DO climatology and the restored DO climatology, then compute a linear combination of each such that the 10th percentile criterion is minimally attained.  For example, the time series could reflect the observed DO levels, or the restored DO levels, or a value some fraction of the distance between each.  These projected DO levels can be combined with the water temperature climatology.  The same function that EPA used to predict mortality for criteria development can be used to predict minimum mortality in the minimally attaining scenario.  
+
+For this analysis, I focused on just minimally attaining the 10th percentile criterion.
+
+
+```{r}
+
+# Calculate the 2010-2020 POSAT climatology (observed) for Chester and Penn's Landing
+climatology <- wq_timeseries %>% 
+  filter(year>2010) %>% 
+  filter(between(month(date),7,10)) %>%
+  mutate(doy.as.date = as.Date(paste0("1970-",format(date,"%m-%d")))) %>% 
+  group_by(Site,type,doy.as.date) %>% 
+  summarize(posat.50=median(posat.mean),
+            posat.10 = quantile(posat.mean,probs=0.1),
+            posat.90 = quantile(posat.mean,probs=0.9),
+            n=n()) %>% 
+  ungroup()
+
+# Graph the Observed and Restored DO climatology.
+ggplot()+
+  geom_ribbon(data=climatology,aes(x=doy.as.date,ymin=posat.10,ymax=posat.90),fill=pal[2])+
+  geom_line(data=climatology,aes(x=doy.as.date,y=posat.50),color=pal[1])+
+  scale_x_date(date_labels="%m/%d") + 
+  facet_grid(type~Site)+
+  ggtitle("Percent Oxygen Saturation Climatology (2012-2022)",
+          subtitle = "Observed DO and Restored DO Scenario")+
+  nogrid
+
+# Compute the 10th and Median DO levels for both scenarios at each site. 
+climatology %>% 
+  group_by(type,Site) %>% 
+  summarize(p.10 = quantile(posat.50,probs=0.1),
+            p.50 = quantile(posat.50,probs=0.5))
+
+# Pivot the data so that calculations can be made using both observed and
+# restored DO levels for each day.
+climatology.pivot <- cbind(
+  climatology %>% filter(type=="Observed") %>% 
+    select(-posat.90,-n) %>% 
+    rename(posat10.Obs = posat.10,posat.50.Obs = posat.50),
+    climatology %>% filter(type=="Restored") %>%
+    rename(posat.10.Res = posat.10,posat.50.Res = posat.50) %>% 
+    select(posat.50.Res,posat.10.Res)
+)
+```
+
+## Calculate a linear combination of the observed and restored climatology resulting minimal criteria attainment.
+
+```{r}
+
+# Observed median climatology at Chester (2012-2022) meets EPA's 10th percentile criteria, but to attain the median criterion (74%) in the median year, it is necessary to go 38% of the way from observed to restored time series.
+wgt <- 0
+climatology.pivot.Chester <- climatology.pivot %>% 
+  filter(Site=="Chester") %>%  
+  mutate(posat.50.att = (posat.50.Res*wgt + posat.50.Obs*(1-wgt)))
+quantile(climatology.pivot.Chester$posat.50.att,probs=c(0.1,0.5))
+
+# At Penn's Landing, one needs to go 25% of the way from the average observed year to the 
+# average restored year to minimally attain the 10th percentile criterion.
+wgt <- 0.25
+climatology.pivot.Penn <- climatology.pivot %>% 
+  filter(Site=="Penn's Landing") %>%  
+  mutate(posat.50.att = (posat.50.Res*wgt + posat.50.Obs*(1-wgt)))
+quantile(climatology.pivot.Penn$posat.50.att,probs=c(0.1,0.5))
+
+# Note that the water quality criteria must be attained in ALL years, not just
+# the average year, so these calculations do not show that water quality in the
+# Delaware River is already attaining!
+climatology.attains <- rbind(
+  climatology.pivot.Chester,
+  climatology.pivot.Penn) %>% 
+  select(Site,doy.as.date,posat.50.att)  %>% 
+  rename(posat.mean = posat.50.att)
+
+# Confirm that the 10th percentile at each site is being minimally attained at
+# both sites with these time series.
+climatology.attains %>% group_by(Site) %>% 
+  summarize(posat.10 = quantile(posat.mean,probs=0.1))
+
+# Calculate the water temperature climatology
+climatology.wt <- wq_timeseries %>% 
+  filter(year>2010) %>% 
+  filter(between(month(date),7,10)) %>%
+  mutate(doy.as.date = as.Date(paste0("1970-",format(date,"%m-%d")))) %>% 
+  group_by(Site,doy.as.date) %>% 
+  summarize(wt.10 = quantile(wt.mean,probs=0.1),
+            wt.90 = quantile(wt.mean,probs=0.9),
+            wt.50 = quantile(wt.mean,probs=0.5),
+            n=n()) %>% 
+  ungroup()
+
+# Plot the Water Temperature climatology.
+ggplot()+
+  geom_ribbon(data=climatology.wt,aes(x=doy.as.date,ymin=wt.10,ymax=wt.90),fill=pal[2])+
+  geom_line(data=climatology.wt,aes(x=doy.as.date,y=wt.50),color=pal[1])+
+  scale_x_date(date_labels="%m/%d")+
+  facet_wrap(~Site)+
+  ggtitle("Water Temperature Climatology (2012-2022)")+
+  nogrid
+
+# Combine the time series for DO levels and Water Temperature
+climatology.attains <- left_join(climatology.attains,
+                                 climatology.wt %>% select(Site,doy.as.date,wt.50),
+                                 by=c("Site","doy.as.date")) %>% 
+  ungroup()
+
+save(climatology.attains, file=here("data","7.10 Minimally Attaining Scenarios.Rdata"))
+
+```
+
+# Calculate the number of individuals surviving 
+Under the scenario that minimally attains EPA's 10th percentile criterion, 20.9% of individuals can be expected to survive the _Juvenile Development_ season at Chester and 22.5% at Penn's Landing (correspondingly, at HSI>0, growth of individuals exceeds 1/0.22.  In this scenario,individuals increase their weight about 4.5-fold, an average growth rate of 0.012 d^-1^. Survivorship at Penn's Landing is slightly higher because water temperature is slightly lower.
+
+In the minimally attaining time series, DO (mg/L) was less than 6 mg/L for 80 days at Chester and 85 days at Penn's Landing. If DO on all those days was instead replaced with 6 mg/L, the expected fraction of surviving individuals would be 40.6% at Chester and 41.1% at Penn's Landing.  This the fraction surviving would be almost 2-fold higher.
+
+If DO was at 100% saturation, up to 99% of individuals could survive the interacting effects of water temperature and oxygen level. Mortality due to other causes, such as predation or food limitation, would still occur.
+
+```{r}
+
+# Load the mortality function.
+source(here("functions","get_mortality.R"))
+
+# Calculate the DO concentration, and compute a time series where DO is 
+# replaced with 6 mg/L whenever DO is less than 6 mg/L.  Calculate percent
+# saturation again from the modified DO time series.
+climatology.attains <- climatology.attains %>% 
+  mutate(do.mgL = (posat.mean/100)*gas_O2sat(S=0,t=wt.50),
+         do.min6 = ifelse(do.mgL<6,6,do.mgL)) %>% 
+  mutate(posat.min6 = do.min6*100/gas_O2sat(S=0,t=wt.50))
+
+# Use the mortality function to calculate daily minimum mortality for each scenario.
+# minimum attaining scenario.
+climatology.attains$zmin <- get.m.hypoxia(climatology.attains$posat.mean,
+                                          climatology.attains$wt.50)
+# scenario where values lower than 6 mg/L are replaced with 6 mg/L.
+climatology.attains$zmin.min6 <- get.m.hypoxia(climatology.attains$posat.min6,
+                                          climatology.attains$wt.50)
+# scenario where DO is at 100%.
+climatology.attains$zmin.posat100 <- get.m.hypoxia(100,
+                                          climatology.attains$wt.50)
+
+# Calculate survivorship at each site for each scenario.
+climatology.attains %>% group_by(Site) %>% 
+  summarize(percent_surviving = 100*exp(-123*mean(zmin)),
+            percent_surviving.100=100*exp(-123*mean(zmin.posat100)),
+            percent_surviving.min6 = 100*exp(-123*mean(zmin.min6)))
+
+```
+
+## Notes
+Dissolved oxygen levels will vary from year to year, but EPA's criteria must be met in all years.  Therefore, the minimimally attaining scenario is a worst case, not a typical or expected case.  DO levels must be higher than the minimally attaining scenario much of the time to ensure that the EPA's criteria are attained in all years. In years with better than the minimum attaining DO condition, the number of days with DO<6 mg/L will be less than the worst case scenario.
+
+As a result of these considerations, this estimate of the difference in survivorship between the minimum attaining condition (about 22%) and the condition where the minimum DO is 6 mg/L (about 40%) is worst case scenario.
+
+As commenters have noted, the condition where HSI=0 does not describe a situation for juvenile Atlantic Sturgeon where low dissolved oxygen and high water temperature have no effect on growth and survival.  HSI describes a condition where the cohort may potentially increase, which EPA has defined as the minimum condition likely to support propagation.
