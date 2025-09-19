@@ -29,6 +29,7 @@ The code used the following R-packages.
 | EGRET | 3.0.11 | Obtaining water quality data from USGS data portal    |
 | lmodel2 | 1.7-4 | Fitting Model II regressions  |
 | here | 1.0.1 | Ensuring accurate paths to files |
+| betareg | 3.2-4 | Fitting regressions to predict a proportion |
 
 ## List of Programs (R Markdown)
 
