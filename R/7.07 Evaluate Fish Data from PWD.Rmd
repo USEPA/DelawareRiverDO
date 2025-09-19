@@ -1,0 +1,299 @@
+---
+title: "7.0 Evaluate Fish Data from PWD"
+author: "J Hagy"
+date: "2025-05-12"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(wesanderson)
+library(wql)
+library(marelac)
+
+pal <- wes_palette("Zissou1",5,"discrete")
+no_grid <- theme(panel.grid=element_blank())
+
+source(here("functions","Atlantic Sturgeon Growth Model Function v3 (2023-06-13).R"))
+```
+
+The Philadelphia Water Department contributed data during the public comment period for EPA's consideration.  In this program these data are evaluated to determine their potential relevance and utility for derivation of protective dissolved oxygen criteria.
+
+## Load Data Sets
+Comma separated files extracted from XLSX file provided by PWD.
+
+```{r}
+
+Brundage.2009 <- read.csv(here("raw","Brundage_2009.csv")) %>% 
+  mutate(Date=as.Date(Date,format="%m/%d/%Y"),
+         source="Brundage 2009") 
+calvo <- read.csv(here("raw","2010_Calvo.csv")) %>% 
+  mutate(Date=as.Date(Date,format="%m/%d/%Y"),
+         source="Calvo 2010") 
+ERC.2016 <- read.csv(here("raw","2016_ERC_Report.csv")) %>% 
+  mutate(Date=as.Date(Date,format="%m/%d/%Y"),
+         source="2016 ERC Report")
+ERC.2017 <- read.csv(here("raw","2017_ERC_Report.csv")) %>% 
+  mutate(Date=as.Date(Date,format="%m/%d/%Y"),
+         source="2017 ERC Report")
+ERC.2018 <- read.csv(here("raw","2018_ERC_Report.csv")) %>% 
+  mutate(Date=as.Date(Date,format="%m/%d/%Y"),
+         source="2018 ERC Report")
+ERC.2019 <- read.csv(here("raw","2019_ERC_Report.csv")) %>% 
+  mutate(Date=as.Date(Date,format="%m/%d/%Y"),
+         source="2019 ERC Report")
+
+Park.2020 <- rbind(
+  read.csv(here("raw","2020 Park.csv"),skip=2) %>% 
+  mutate(Date=as.Date(Original.Tag.Date,format="%m/%d/%Y"),
+         source="Park 2020",
+         Location="Not Specified") %>% 
+  rename(Fork.Length_mm = Fork.Length..mm.,
+         Total.Length_mm = Total.Length..mm.,
+         Weight_g = Weight..kg.) %>% 
+  select(Date,Location,Fork.Length_mm,Total.Length_mm,Weight_g,source),
+
+  read.csv(here("raw","2020 Park.csv"),skip=2) %>% 
+  mutate(Date=as.Date(Recapture.Date,format="%m/%d/%Y"),
+         source="Park 2020",
+         Location="Not Specified") %>% 
+  rename(Fork.Length_mm = Fork.Length..mm..1,
+         Total.Length_mm = Total.Length..mm..1,
+         Weight_g = Weight..kg..1) %>% 
+  select(Date,Location,Fork.Length_mm,Total.Length_mm,Weight_g,source)
+)
+
+
+```
+
+# Combine the Data
+
+```{r}
+fish.data <- rbind(
+  select(Brundage.2009,all_of(c("Date","Location","Total.Length_mm","Weight_g","source"))),
+  select(calvo,all_of(c("Date","Location","Total.Length_mm","Weight_g","source"))),
+  select(ERC.2016,all_of(c("Date","Location","Total.Length_mm","Weight_g","source"))),
+  select(ERC.2017,all_of(c("Date","Location","Total.Length_mm","Weight_g","source"))),
+  select(ERC.2018,all_of(c("Date","Location","Total.Length_mm","Weight_g","source"))),
+  select(ERC.2019,all_of(c("Date","Location","Total.Length_mm","Weight_g","source"))),
+  select(Park.2020,all_of(c("Date","Location","Total.Length_mm","Weight_g","source")))
+  ) %>% 
+  mutate(source=factor(source),
+         doy.as.date=as.Date(paste0("1969-",format(Date,format="%m-%d"))))
+
+#size.on.date <- size.on.date %>% 
+#  mutate(doy.as.date=as.Date(yday(Date),origin="1969-12-31"))
+
+fish.data <- fish.data %>% 
+  mutate(doy = yday(Date),
+         year=year(Date))
+
+df <- fish.data %>% 
+  filter(Total.Length_mm<500) %>% 
+  mutate(year_class = ifelse(month(Date)<7,year(Date)-1,year(Date))) %>% 
+  filter(Location =="Marcus Hook Anchorage") %>% 
+  group_by(year_class) %>% 
+  summarize(mean.doy = mean(doy,na.rm=TRUE))
+
+table(fish.data$Location,fish.data$year)
+```
+
+## Tabulate data by report, year and month.  
+
+```{r}
+
+fish.data$year=year(fish.data$Date)
+fish.data$month=month(fish.data$Date)
+
+table(fish.data$year,fish.data$source)
+table(fish.data$month,fish.data$source)
+
+# How many are YOY (defined as <500 g)?
+fish.data <- fish.data %>% 
+  mutate(size_class=cut(Weight_g,breaks=c(0,500,10000),labels=c("<500 g",">500 g")))
+
+100*table(fish.data$size_class)/nrow(fish.data)
+
+fish.data <- fish.data %>% mutate(wgt_group = ifelse(Weight_g>=500,"Age 1+","Age-0")) %>% 
+  filter(!is.na(Weight_g))
+
+ggplot(fish.data,aes(x=doy.as.date,y=Weight_g,shape=source,color=wgt_group))+
+  geom_point()+
+  scale_y_log10()+
+  annotation_logticks(sides="l")+
+  theme_classic()+
+  scale_x_date(date_labels="%m/%d",date_breaks="2 months")+
+  geom_vline(xintercept=as.Date(c("1969-07-01","1969-10-31")),linetype=2)+
+  annotate("text",x=as.Date("1969-09-01"),y=10,label="Juvenile Dev Season")+
+  labs(x="",y="Weight at Capture (g)")+
+  ggtitle("Weight at Capture of Juvenile Atlantic Sturgeon from the Delaware River",
+          subtitle = "Data provided by Philadelphia Water Department")
+
+
+```
+
+Most of the sampled fish were from the 2017 and 2018 year classes. The 2018 report had the most observations because it included individuals from both the 2017 and 2018 year class. The 2019 ERC report only included fish in the winter which are from the 2018 year class.
+
+Most of the observations were collected in November - March.  A few observations were collected by Brundage 2009 during summer, but these are larger age 1+ fish.  Calvo (2010) includes a significant number of individuals captured during September, which augments the data from Park 2020 that the EPA used in the proposed rule. The captures reported in the 2018 and 2019 ERC Reports are overwhelmingly from November through March.  These account for many of the observations of fish weight because of the strong year class in 2018.
+
+Fish smaller than 500 g are most likely from the Ago-0 year class and account for 82% of the sampled individuals.  
+
+```{r include=FALSE}
+
+# Get the water quality data from Chester and Penn's Landing
+load(here("data","5.01 Delaware River at Penn Landing.Rdata"))
+load(here("data","5. Chester_1961-2023.Rdata"))
+
+# Combine data frames and eliminate rows with missing values
+df <- rbind(
+  drChester_ctdo %>% 
+    select(-agency_cd,-site_no) %>% 
+    mutate(site="Chester"),
+  drPenn_ctdo %>% 
+    select(-agency_cd,-site_no) %>% 
+    mutate(site="Penn Landing")
+) %>% filter(complete.cases(.))
+
+# Calculate salinity and POSAT
+df <- df %>% 
+  mutate(salinity.mean = wql::ec2pss(ec=spCond.mean/1000,t=wt.mean,p = 0),
+         posat.mean=do.mgL.mean*100/gas_O2sat(S=salinity.mean,t=wt.mean))
+
+# Calculate time variables
+# Only keep data for 2002 and later
+df <- df %>% 
+  mutate(doy=yday(date)) %>% 
+  filter(year(date)>2001) %>% 
+  mutate(doy.as.date=as.Date(doy,origin=as.Date("1969-12-31")))
+
+```
+
+## Water Temperature
+To compare the distribution of fish weights from these data with expected growth, we need a time series of water temperature.  Here I calculate the long term median and extract the data for 2018.  The water temperature from 2018 is most appropriate for comparison with the fish size data because most of the individuals are from the 2018 year class.  Calculating the median illustrates that water temperatures in 2018 were somewhat below the median. 
+
+```{r}
+
+# df contains the water temperature data from Chester and Penn Landing for all
+# the years since 2002.
+df.2018 <- df %>% filter(year(date) %in% c(2018))
+
+# Calculate the median by day of year
+df.med <- df %>% group_by(site,doy) %>% 
+  summarize(wt.med = median(wt.mean)) %>% 
+  mutate(doy.as.date=as.Date(doy,origin=as.Date("1969-12-31"))) %>% 
+  ungroup()
+
+tmp <- rbind(
+  df.med %>% select(doy.as.date,wt.med,site) %>% 
+    mutate(id="Median WT") %>% rename(wt=wt.med),
+  df.2018 %>% select(doy.as.date,wt.mean,site) %>% 
+    mutate(id="2018 WT") %>% rename(wt=wt.mean)
+)
+
+# Water Temperature in late summer and fall 2018 was below the median
+ggplot(tmp,aes(x=doy.as.date,y=wt,color=id))+
+  geom_line()+
+  facet_wrap(~site,ncol=1)+
+  scale_color_manual(values=pal[c(1,5)])+
+  scale_x_date(date_labels="%m/%d",date_breaks = "1 month")+
+  no_grid+
+  labs(x="",y="Water Temperature (°C)",color="")
+
+rm(tmp)  
+
+```
+
+## Simulate Fish Size with 2018 Water Temperature (DO=100)
+
+```{r}
+my_Labels <- c(
+  as.Date(seq(192,352,by=20),origin="1969-12-31") %>% format(format="%m/%d"),
+  as.Date(seq(8,68,by=20),origin="1969-12-31") %>% format(format="%m/%d")
+)
+my_Breaks <- seq(0,262,by=20)
+
+wt <- df.2018 %>% 
+  filter(site=="Chester") %>% 
+  mutate(days=ifelse(doy>=182,doy-181,doy+184),
+         bin=cut(days,breaks=my_Breaks,labels=my_Labels)) %>% 
+  filter(days<163) %>% 
+  arrange(days)
+
+wt <- wt$wt.mean[1:162]
+  
+gr <- rep(NA,163)
+gr[1] <- 27
+for (i in 1:162) {
+  gr[i+1] <- gr[i]*exp(as_growth_model3(TEMP=wt[i],SAL=0,DO=100,GR=gr[i]))
+}
+
+# Sample time series every 20 days to match time interval on graph
+sim.2018 <- data.frame(bin=factor(my_Labels[1:13]),sim_wt=gr[seq(1,12*20+1,by=20)])
+```
+
+## Simulate Fish Size with Median Water Temperature (DO=100)
+
+```{r}
+
+wt <- df.med %>% 
+  filter(site=="Chester") %>% 
+  mutate(days=ifelse(doy>=182,doy-181,doy+184),
+         bin=cut(days,breaks=my_Breaks,labels=my_Labels)) %>% 
+  filter(days<261) %>% 
+  arrange(days)
+
+wt <- wt$wt.med[1:261]
+  
+gr <- rep(NA,262)
+gr[1] <- 27
+for (i in 1:261) {
+  gr[i+1] <- gr[i]*exp(as_growth_model3(TEMP=wt[i],SAL=0,DO=100,GR=gr[i]))
+}
+
+# Sample time series every 20 days to match time interval on graph
+sim.med <- data.frame(bin=factor(my_Labels[1:13]),sim_wt=gr[seq(1,12*20+1,by=20)])
+
+```
+
+## Plot the Fish Size Data 
+- use violin plots with time interval of 20 days
+- plot the 500 g cut off for Age-0 fish
+- plot the observed fish size in each 20 days window (jitter the x-data)
+- plot the simulated fish weight (assumes: initial weight of 27 g on 7/1,
+water temperature is median water temperature, POSAT=100%
+
+```{r}
+
+my_Labels <- c(
+  as.Date(seq(192,352,by=20),origin="1969-12-31") %>% format(format="%m/%d"),
+  as.Date(seq(8,68,by=20),origin="1969-12-31") %>% format(format="%m/%d")
+)
+my_Breaks <- seq(0,260,by=20)
+
+df <- fish.data %>%
+  mutate(days=ifelse(yday(Date)>=182,yday(Date)-181,yday(Date)+184),
+         bin=cut(days,breaks=my_Breaks,labels=my_Labels))
+
+ggplot()+
+  geom_jitter(data=df,aes(x=bin,y=Weight_g,color=source),shape=1,width=0.2)+
+  scale_x_discrete(drop=FALSE)+
+  scale_y_log10()+
+  geom_violin(data=df,aes(x=bin,y=Weight_g),fill=pal[1],alpha=0.8, scale="width")+
+  geom_point(data=sim.2018[1:13,],aes(x=bin,y=sim_wt))+
+  geom_point(data=sim.med[1:13,],aes(x=bin,y=sim_wt),shape=1)+
+  geom_hline(yintercept=500,linetype=2)+
+  annotation_logticks(sides="l")+
+  labs(x="Days since July 1",y="Weight (g)",color="Source")+
+  theme_classic()
+
+```
+
+Using water temperatures from 2018, simulated fish sizes (filled circles) approximate the modal (i.e., the mode, or the widest part of the violin plot) fish weight for Age-0 fish from the combined data set until the end of November. Fish captured in December through March, which were mostly from the 2015 and 2018 year classes, were larger than the bioenergetics model would predict using median water temperature (open circles) and assuming a weight of 27g on July 1. 
+
+At very cold water temperatures, the bioenergetics model predicts that fish growth is slightly negative. However, the data suggest that fish weight may have continued to increase through December 2018 before weight stopped increasing in January to March. Since the fish in different months were captured in different years (though dominated by the 2018 year class), this pattern might reflect year-to-year differences in fish size prior to winter, rather than growth during the winter. However, it is possible as well that the bioenergetics model underestimates growth at low water temperature.  
+
