@@ -99,7 +99,7 @@ This program generates Figure 8 and Figure 9 in the TSD and the threshold values
 ### 6.04 Fit QGAMs Relating HSI to DO Percentiles.Rmd
 This program follows the identical workflow for program 6.03, but uses DO (mg/L) instead of POSAT. This program generates Figure A7-1 and Figure A7-2 in the TSD and the threshold values reported in Table 5.
 
-### 7.0 7.0 Evaluate Chesapeake Bay Criteria in Delaware River.Rmd
+### 7.0 Evaluate Chesapeake Bay Criteria in Delaware River.Rmd
 This program compares attainment of the Chesapeake Bay DO criteria if applied to data from the Delaware River with attainment of the EPA's criteria in the Delaware River.  This addresses a question suggesting that the EPA's criteria are far more stringent than the criteria for Chesapeake Bay.  The analysis shows that there is not a large difference in stringency.
 
 ### 7.01 Evaluate Seasonal Attainment
