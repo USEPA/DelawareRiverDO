@@ -115,3 +115,6 @@ This program estimates the minimum DO, as percent saturation and as concentratio
 
 ### 7.05 Evaluate Water Temperature Trends.Rmd
 This program evaluates patterns and trends in water temperature, considering long term trends, seasonal differences in long term trends, and differences in water temperature between Penn's Landing and Chester.
+
+### 7.06 Evaluate Fish Data from PWD.Rmd
+This program assembles and assesses the content of fish length and weight data provided by the Philadelphia Water Department to determine its potential application to the EPA's dissolved oxygen criteria derivation.
