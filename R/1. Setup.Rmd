@@ -15,7 +15,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 packages <- c("knitr","tidyverse","gt","lubridate","wesanderson",
               "viridis","marelac","wql","qgam","mgcv","gratia",
-              "modelr","EGRET","lmodel2","here","stats","patchwork")
+              "modelr","EGRET","lmodel2","here","stats","patchwork",
+              "betareg")
 
 df <- packages %in% installed.packages()
 
