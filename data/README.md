@@ -163,4 +163,18 @@ This file includes a subset of 2019 EFDC/WASP simulation model results for ammon
 | NO23 | daily average nitrate plus nitrite  (mg-N/L) |
 | din | dissolved inorganic nitrogen = NH34 + NO23 (mg-N/L) |
 
+## 7.10 Minimally Attaining Scenarios.Rdata
+This file includes an estimated daily oxygen climatology for the _Juvenile Development_ season that would occur if the EPA's 10th percentile criterion was minimally attained along with estimates of the minimum daily mortality rates corresponding to the estimated DO levels at the median water temperature climatology.
 
+| Variable | Description |
+| :--- | :--- |
+| Site | Location, Chester or Penn's Landing  |
+| doy.as.date | variable indicating day of year  |
+| posat.mean | daily mean percent oxygen saturation |
+| wt.50 | median water temperature for that day |
+| do.mgL | DO concentration in the minimumally attaining scenario |
+| do.min6 | DO concentration in the minimumally attaining scenario where DO<6 is replaced with 6 mg/L |
+| posat.min6 | Percent oxygen saturation corresponding to do.min6 |
+| zmin | minimum daily mortality in the minimally attaining scenario |
+| zmin.min6 | minimum daily mortality in the scenario where DO is always at least 6 mg/L |
+| zmin.posat100 | minimum daily mortality when percent oxygen saturation is always 100% |
