@@ -14,25 +14,29 @@ The code used the following R-packages.
 
 |Package | Version | Used for |
 | :--- | :---: | :---  |
-| knitr | 1.50 | Processing R-markdown    |
-| tidyverse | 2.0.0 | Data processing and graphing   |
-| gt | 1.0.0  | Making tables    |
-| lubridate | 1.9.4  | Processing dates  |
-| wesanderson | 0.3.7  | Color palettes    |
-| viridis | 0.6.5  |  Color palettes   |
-| marelac | 2.1.11  | Gas solubility functions   |
-| wql | 1.0.3 | Calculating salinity from conductivity   |
-| qgam | 2.0.0  | Fitting quantile generalized additive models    |
-| mgcv | 1.9-1  | Fitting generalized additive models |
-| gratia |0.11.1  |Evaluating generalized additive models |
-| modelr | 0.1.11  |Evaluating generalized additive models |
-| EGRET | 3.0.11 | Obtaining water quality data from USGS data portal    |
-| lmodel2 | 1.7-4 | Fitting Model II regressions  |
-| here | 1.0.1 | Ensuring accurate paths to files |
 | betareg | 3.2-4 | Fitting regressions to predict a proportion |
-| patchwork | 1.3.1 | compose multipanel plots |
-| zoo | 1.8-14 | compute rolling means |
+| EGRET | 3.0.11 | Obtaining water quality data from USGS data portal    |
+| gratia |0.11.1  |Evaluating generalized additive models |
+| gt | 1.0.0  | Making tables    |
+| here | 1.0.1 | Ensuring accurate paths to files |
 | janitor | 2.2.1 | cleaning data |
+| knitr | 1.50 | Processing R-markdown    |
+| lmodel2 | 1.7-4 | Fitting Model II regressions  |
+| marelac | 2.1.11  | Gas solubility functions   |
+| mgcv | 1.9-1  | Fitting generalized additive models |
+| modelr | 0.1.11  |Evaluating generalized additive models |
+| patchwork | 1.3.1 | compose multipanel plots |
+| qacBase | 1.0.3 | compute summary statistics |
+| qgam | 2.0.0  | Fitting quantile generalized additive models |
+| quantreg | 6.1 | Fitting quantile regressions |
+| readxl | 1.4.5 | Read Microsoft Excel files |
+| stats | 4.4.2 | The R Stats Package |
+| tidyverse | 2.0.0 | Data processing and graphing |
+| viridis | 0.6.5  |  Color palettes |
+| wesanderson | 0.3.7  | Color palettes |
+| wql | 1.0.3 | Calculating salinity from conductivity |
+| zoo | 1.8-14 | compute rolling means |
+
 
 ## List of Programs (R Markdown)
 
