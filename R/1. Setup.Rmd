@@ -8,7 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(tidyverse)
 ```
 
 ## Check if packages are installed, and if not, install them
@@ -23,7 +22,12 @@ packages <- c("betareg","EGRET","gratia","gt","here","janitor","knitr",
 
 df <- packages %in% installed.packages()
 
-print("The following required packages are not installed and should be installed using install.packages():\n")
-print(packages[!df])
+if (all(df)) {
+  print("All the packages needed to run the R programs in the DelawareDO repository are installed")
+} else {
+  print("The following required packages are not installed and should be installed using install.packages():\n")
+  print(packages[!df])
+}
+
 
 ```
